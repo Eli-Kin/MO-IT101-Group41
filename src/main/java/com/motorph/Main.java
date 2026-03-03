@@ -311,7 +311,7 @@ public class Main {
 
     static double netGrossSalaryCalculator(double weeklyGross) {
 
-        // Convert weekly gross to monthly equivalent for table lookups
+        // Convert weekly gross to monthly equivalent
         double monthlyGross = weeklyGross * (52.0 / 12.0); // ~4.333 weeks per month, 52 weeks divided by 12 months
 
         // SSS Contribution
