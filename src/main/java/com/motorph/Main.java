@@ -148,13 +148,13 @@ public class Main {
 
             //start of de-nestify project
             //checks if it's not an integer
-            if(!isInteger(input)){
+            if (!isInteger(input)) {
                 System.out.println("Please input a number.");
                 continue;
             }
 
             //checks if input is a valid id number
-            if(!employees.containsKey(Integer.parseInt(input))){
+            if (!employees.containsKey(Integer.parseInt(input))) {
                 System.out.println("ID not found in employees");
                 continue;
             }
@@ -187,87 +187,80 @@ public class Main {
             }
 
             //could be a method here.
-            if (employees.containsKey(id)) {
-                String alert = "";
-                do {
-                    inEmployees = true;
-                    if (employeesNames.containsKey(id) && employeesBirthdays.containsKey(id)) {
-                        System.out.println("-".repeat(100));
-                        System.out.println("ID: " + id);
-                        System.out.println("Name: " + employeesNames.get(id));
-                        System.out.println("Birthday: " + employeesBirthdays.get(id));
-                        System.out.println("Total Hours: " + secondsToTime(totalSeconds));
-                        System.out.println("Total Gross Salary: " + grossSalaryCalculator(totalSeconds, HR));
-                    } else {
-                        System.out.println("ID seems to not match with either the Name or the Birthday.");
-                    }
+            //already did a check for if it didn't containsKey(id) earlier.
+            // if (employees.containsKey(id)) {
+            String alert = "";
+            do {
+                inEmployees = true;
+                if (!employeesNames.containsKey(id) || !employeesBirthdays.containsKey(id)) {
+                    System.out.println("ID seems to not match with either the Name or the Birthday.");
+                    continue; //p sure, sleepy rn
+                }
 
+                //note i'm going to need to fill parameters up for this
+                //TODO: put all the parameters for displayEmployeeData in
+                //TODO: figure out if if line 195 is redundant to line 157
+                displayEmployeeData();
+                //not sure if alert belongs in the method or not
+                System.out.println(alert);
+                //end method
 
+                input = sc.next().toLowerCase();
 
-                    System.out.println("-".repeat(100));
-                    System.out.println("Enter g to display gross salary per week.");
-                    System.out.println("Enter a to show attendance.");
-                    System.out.println("Enter e to go back.");
-                    System.out.println(alert);
-                    //end method
+                if (!(input.length() == 1)) {
+                    System.out.println("Input too long.");
+                    continue;
+                }
 
-                    input = sc.next().toLowerCase();
+                switch (input) {
+                    case "g":
+                        System.out.println("worketh");
+                        for (int i = 0; i < inList.size(); i++) {
+                            //every iteration a new array is created
+                            String[] inParts = inList.get(i).split(":");
+                            String[] outParts = outList.get(i).split(":");
 
-                    if(!(input.length() ==1)){
-                        System.out.println("Input too long.");
-                        continue;
-                    }
+                            int inHour = Integer.parseInt(inParts[0]);
+                            int inMinute = Integer.parseInt(inParts[1]);
+                            int outHour = Integer.parseInt(outParts[0]);
+                            int outMinute = Integer.parseInt(outParts[1]);
 
-                    switch(input){
-                        case "g":
-                            System.out.println("worketh");
-                            for (int i = 0; i < inList.size(); i++) {
-                                //every iteration a new array is created
-                                String[] inParts = inList.get(i).split(":");
-                                String[] outParts = outList.get(i).split(":");
-
-                                int inHour = Integer.parseInt(inParts[0]);
-                                int inMinute = Integer.parseInt(inParts[1]);
-                                int outHour = Integer.parseInt(outParts[0]);
-                                int outMinute = Integer.parseInt(outParts[1]);
-
-                                weeklySeconds += hourBetweenLog(inHour, inMinute, outHour, outMinute);
-                                //every 5 iterations
-                                if ((i + 1) % 5 == 0) {
-                                    double weekGross = grossSalaryCalculator(weeklySeconds, HR);
-                                    week++;
-                                    System.out.println("Week " + week);
-                                    System.out.println("Weekly Gross: " + weekGross);
-                                    System.out.println("Weekly Net Salary: " + netGrossSalaryCalculator(weekGross));
-                                    System.out.println("Hours in the Week: " + secondsToTime(weeklySeconds));
-                                    System.out.println("-".repeat(20));
-                                    weeklySeconds = 0; //reset weeklyseconds
-                                }
+                            weeklySeconds += hourBetweenLog(inHour, inMinute, outHour, outMinute);
+                            //every 5 iterations
+                            if ((i + 1) % 5 == 0) {
+                                double weekGross = grossSalaryCalculator(weeklySeconds, HR);
+                                week++;
+                                System.out.println("Week " + week);
+                                System.out.println("Weekly Gross: " + weekGross);
+                                System.out.println("Weekly Net Salary: " + netGrossSalaryCalculator(weekGross));
+                                System.out.println("Hours in the Week: " + secondsToTime(weeklySeconds));
+                                System.out.println("-".repeat(20));
+                                weeklySeconds = 0; //reset weeklyseconds
                             }
-                            break;
-                        case "a":
-                            if (date.containsKey(id)) {
-                                //display header
-                                System.out.printf("%-14s %-9s %-9s", "Date", "In", "Out");
+                        }
+                        break;
+                    case "a":
+                        if (date.containsKey(id)) {
+                            //display header
+                            System.out.printf("%-14s %-9s %-9s", "Date", "In", "Out");
+                            System.out.println();
+                            for (int i = 0; i < dateList.toArray().length; i++) {
+                                System.out.printf("%-14s %-9s %-9s", dateList.get(i), inList.get(i), outList.get(i));
                                 System.out.println();
-                                for (int i = 0; i < dateList.toArray().length; i++) {
-                                    System.out.printf("%-14s %-9s %-9s", dateList.get(i), inList.get(i), outList.get(i));
-                                    System.out.println();
-                                }
                             }
-                            break;
-                        case "e":
-                            inEmployees = false;
-                            alert = "";
-                            IntroLogo(employees);
-                            break;
-                        default:
-                            alert = "Please input either \"g\", \"a\" or \"e\".";
-                            continue;
-                    }
-                    //end method
-                } while (inEmployees == true);
-            }
+                        }
+                        break;
+                    case "e":
+                        inEmployees = false;
+                        alert = "";
+                        IntroLogo(employees);
+                        break;
+                    default:
+                        alert = "Please input either \"g\", \"a\" or \"e\".";
+                        continue;
+                }
+                //end method
+            } while (inEmployees == true);
         } while (appRunning);
     }
 
@@ -355,19 +348,28 @@ public class Main {
         double plus = 0;
         double withholdingTaxMonthly = 0;
         if (monthlyGross > 20833 && monthlyGross <= 33333) {
-            taxRate = 0.20; excess = 20833;
+            taxRate = 0.20;
+            excess = 20833;
             withholdingTaxMonthly = (monthlyGross - excess) * taxRate;
         } else if (monthlyGross > 33333 && monthlyGross <= 66667) {
-            taxRate = 0.25; excess = 33333; plus = 2500;
+            taxRate = 0.25;
+            excess = 33333;
+            plus = 2500;
             withholdingTaxMonthly = plus + (monthlyGross - excess) * taxRate;
         } else if (monthlyGross > 66667 && monthlyGross <= 166667) {
-            taxRate = 0.30; excess = 66667; plus = 10833;
+            taxRate = 0.30;
+            excess = 66667;
+            plus = 10833;
             withholdingTaxMonthly = plus + (monthlyGross - excess) * taxRate;
         } else if (monthlyGross > 166667 && monthlyGross <= 666667) {
-            taxRate = 0.32; excess = 166667; plus = 40833.33;
+            taxRate = 0.32;
+            excess = 166667;
+            plus = 40833.33;
             withholdingTaxMonthly = plus + (monthlyGross - excess) * taxRate;
         } else if (monthlyGross > 666667) {
-            taxRate = 0.35; excess = 666667; plus = 200833.33;
+            taxRate = 0.35;
+            excess = 666667;
+            plus = 200833.33;
             withholdingTaxMonthly = plus + (monthlyGross - excess) * taxRate;
         }
         double withholdingTax = withholdingTaxMonthly / (52.0 / 12.0);
@@ -387,7 +389,7 @@ public class Main {
         return weeklyGross - totalContribution;
     }
 
-    static void IntroLogo(HashMap<Integer, String> employees){
+    static void IntroLogo(HashMap<Integer, String> employees) {
         System.out.flush();
         System.out.println("-".repeat(100));
 
@@ -407,5 +409,19 @@ public class Main {
         for (Map.Entry<Integer, String> entry : employees.entrySet()) {
             System.out.printf("%-8d %-20s%n", entry.getKey(), entry.getValue());
         }
+    }
+
+    public static void displayEmployeeData(int id, HashMap<Integer, String> employeesNames, HashMap<Integer, String> employeesBirthdays, long totalSeconds, double HR){
+        System.out.println("-".repeat(100));
+        System.out.println("ID: " + id);
+        System.out.println("Name: " + employeesNames.get(id));
+        System.out.println("Birthday: " + employeesBirthdays.get(id));
+        System.out.println("Total Hours: " + secondsToTime(totalSeconds));
+        System.out.println("Total Gross Salary: " + grossSalaryCalculator(totalSeconds, HR));
+
+        System.out.println("-".repeat(100));
+        System.out.println("Enter g to display gross salary per week.");
+        System.out.println("Enter a to show attendance.");
+        System.out.println("Enter e to go back.");
     }
 }
