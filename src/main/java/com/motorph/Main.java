@@ -9,138 +9,23 @@ import java.util.*;
 
 public class Main {
 
+    //ill probably axe these but idk yet
+    //its 11
     private static List<String> sssCMinRange = new ArrayList<>();
     private static List<String> sssCMaxRange = new ArrayList<>();
     private static List<String> sssContribution = new ArrayList<>();
 
-    public static void main(String[] args) {
-        String attendanceLine;
-        String infoLine;
-        String sssCLine;
-
-        String[] attendanceRow = {};
-        String[] sssCRow = {};
-
-        BufferedReader attendanceReader = null;
-        BufferedReader infoReader = null;
-        BufferedReader sssCReader = null;
-
+    public static void main(String[] args) throws IOException {
         Scanner sc = new Scanner(System.in);
         String input;
 
+        Map<String, HashMap<Integer, String>> employeeData = parseEmployeeData();
+        HashMap<Integer, String> employees = employeeData.get("employees");
+        HashMap<Integer, String> employeeHourlyRate = employeeData.get("hourlyRate");
+
+        //After data has been stored and organised output logo and all employee data and declare and initialize appRunning as true
         boolean appRunning = true;
-
-        //Declaring ArrayList for every chosen column
-        List<Integer> ids = new ArrayList<>();
-        List<String> infos = new ArrayList<>();
-        List<String> names = new ArrayList<>();
-        List<String> birthdays = new ArrayList<>();
-        List<String> hourlyRate = new ArrayList<>();
-
-        List<String> dateList;
-        List<String> inList;
-        List<String> outList;
-
-        HashMap<Integer, List<String>> date = new HashMap<>();
-        HashMap<Integer, List<String>> in = new HashMap<>();
-        HashMap<Integer, List<String>> out = new HashMap<>();
-
-        //Get the data
-        //honestly, it's own method
-        try {
-            //moving string paths in here
-            String attendanceFile = "src\\data_attendance.csv";
-            String infoFile = "src\\data_info.csv";
-            String sssCFile = "src\\sss_contribution.csv";
-
-            attendanceReader = new BufferedReader(new FileReader(attendanceFile));
-            infoReader = new BufferedReader(new FileReader(infoFile));
-            sssCReader = new BufferedReader(new FileReader(sssCFile));
-
-            infoReader.readLine(); // skip header
-            //assign the row and read the next line every iteration
-            while (((infoLine = infoReader.readLine()) != null)) {
-                //split the string into an array
-                String [] infoRow = infoLine.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)"); //new Array every iteration
-
-                //store ids in arraylist every iteration
-                ids.add(Integer.parseInt(infoRow[0])); //convert to int
-
-                //store infos in arraylist every iteration
-                String name = infoRow[1] + " " + infoRow[2];
-                String formatted = String.format("%-25s %-25s", name, infoRow[3]);
-                infos.add(formatted);
-
-                //store hourly rate, name and birthday separately
-                hourlyRate.add(infoRow[18]);
-                names.add(name);
-                birthdays.add(infoRow[3]);
-            }
-
-            attendanceReader.readLine(); // skip header
-            while ((attendanceLine = attendanceReader.readLine()) != null) {
-                attendanceRow = attendanceLine.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
-
-                int id = Integer.parseInt(attendanceRow[0]);
-                String attendanceDate = attendanceRow[3];
-                String attendanceIn = attendanceRow[4];
-                String attendanceOut = attendanceRow[5];
-
-                //if id doesn't exist, create a new list, if it does exist then ignore
-                date.putIfAbsent(id, new ArrayList<>());
-                in.putIfAbsent(id, new ArrayList<>());
-                out.putIfAbsent(id, new ArrayList<>());
-                //the csv file is sorted with the id.
-                //the csv file contain multiple identical id, so using putifabsent, the creation of a new list will be prevented if the id exist.
-                //while the id is still the same in the loop, the same list will be used.
-                //once a new id appear, a list will be replaced with a new one.
-
-                //store the date to the list for that ID
-                date.get(id).add(attendanceDate);
-                in.get(id).add(attendanceIn);
-                out.get(id).add(attendanceOut);
-            }
-            sssCReader.readLine(); // skip header
-            sssCReader.readLine(); // skip header
-            while ((sssCLine = sssCReader.readLine()) != null) {
-                sssCRow = sssCLine.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
-
-                for (int i = 0; i < sssCRow.length; i++) {
-                    // Remove quotes and commas
-                    sssCRow[i] = sssCRow[i].replace("\"", "").replace(",", "");
-                }
-
-                sssCMinRange.add(sssCRow[0]);
-                sssCMaxRange.add(sssCRow[2]);
-                sssContribution.add(sssCRow[3]);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                attendanceReader.close();
-                infoReader.close();
-                sssCReader.close();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        //store ids as keys and infos as value in hashmap
-        HashMap<Integer, String> employees = new HashMap<>();
-        HashMap<Integer, String> employeesHourlyRate = new HashMap<>();
-        HashMap<Integer, String> employeesNames = new HashMap<>();
-        HashMap<Integer, String> employeesBirthdays = new HashMap<>();
-        for (int i = 0; i < ids.size(); i++) {
-            employees.put(ids.get(i), infos.get(i));
-            employeesHourlyRate.put(ids.get(i), hourlyRate.get(i));
-            employeesNames.put(ids.get(i), names.get(i));
-            employeesBirthdays.put(ids.get(i), birthdays.get(i));
-        }
-
-        //After data has been stored and organised output logo and all employee data in desired format
-        displayIntro(employees);
-
+        displayIntro();
         do {
             //Asks for the employee ID
             input = sc.next();
@@ -157,58 +42,43 @@ public class Main {
                 continue;
             }
 
+            //Gather data regarding employee attendance
+            Map<String, HashMap<Integer, List<String>>> attendanceData = parseEmployeeAttendance();
+            HashMap<Integer, List<String>> dateMap = attendanceData.get("date");
+            HashMap<Integer, List<String>> inMap = attendanceData.get("in");
+            HashMap<Integer, List<String>> outMap = attendanceData.get("out");
 
-            int id = Integer.parseInt(input); // convert input to int
-            double HR = Double.parseDouble(employeesHourlyRate.get(id));
-            int week = 0;
-            long totalSeconds = 0;
-            long weeklySeconds = 0;
+            // convert input to int
+            int id = Integer.parseInt(input);
+            //get hourly rate, time in and time out for the associated ID
+            List<String> inList = inMap.get(id);
+            List<String> outList = outMap.get(id);
+            double HR = Double.parseDouble(employeeHourlyRate.get(id));
 
-            // get the list for the specific id
-            dateList = date.get(id);
-            inList = in.get(id);
-            outList = out.get(id);
-
-
-            //for loop it's own method?
-            for (int i = 0; i < inList.size(); i++) {
-                //every iteration a new array is created
-                String[] inParts = inList.get(i).split(":"); //split the list data and store in an array
-                String[] outParts = outList.get(i).split(":");
-
-                int inHour = Integer.parseInt(inParts[0]);
-                int inMinute = Integer.parseInt(inParts[1]);
-                int outHour = Integer.parseInt(outParts[0]);
-                int outMinute = Integer.parseInt(outParts[1]);
-
-                //sum the seconds every loop
-                totalSeconds += hourBetweenLog(inHour, inMinute, outHour, outMinute);
-            }
             //displays employee data tied to the ID
-            displayEmployeeData(id, employeesNames, employeesBirthdays, totalSeconds, HR);
+            displayEmployeeData(inMap, outMap, id);
 
             //Enters a loop asking for further information about an employee
             boolean inEmployees = true;
-            loop : while (inEmployees) {
+            loop: while (inEmployees) {
                 displayOptions();
                 input = sc.next().toLowerCase();
 
-                //Allowed inputs are g, a, and e.
                 //Checking if input is too long
                 if (input.length() != 1) {
                     System.out.println("Input too long.");
                     continue;
                 }
-
+                //Allowed inputs are g, a, and e.
                 switch (input) {
                     case "g":
-                        displayWeeklyGrossSalary(inList, outList, weeklySeconds, week, HR);
+                        displayWeeklyGrossSalary(inList, outList, HR);
                         break;
                     case "a":
-                        displayAttendance(id, date, inList, outList, dateList);
+                        displayAttendance(dateMap, inMap, outMap, id);
                         break;
                     case "e":
-                        displayIntro(employees);
+                        displayIntro();
                         break loop;
                     default:
                         System.out.println("Please input either \"g\", \"a\" or \"e\".");
@@ -343,7 +213,12 @@ public class Main {
         return weeklyGross - totalContribution;
     }
 
-    static void displayIntro(HashMap<Integer, String> employees) {
+    static void displayIntro() throws IOException {
+        Map<String, HashMap<Integer, String>> employeeData = parseEmployeeData();
+        HashMap<Integer, String> employees = employeeData.get("employees");
+        HashMap<Integer, String> employeeNames = employeeData.get("names");
+        HashMap<Integer, String> employeesBirthdays = employeeData.get("birthdays");
+
         System.out.flush();
         System.out.println("");
         System.out.println("-".repeat(100));
@@ -369,23 +244,52 @@ public class Main {
         System.out.print("Enter Employee's ID: ");
     }
 
-    static void displayEmployeeData(int id, HashMap<Integer, String> employeesNames, HashMap<Integer, String> employeesBirthdays, long totalSeconds, double HR){
+    static void displayEmployeeData(HashMap<Integer, List<String>> inMap, HashMap<Integer, List<String>> outMap, int id) throws IOException {
+        Map<String, HashMap<Integer, String>> employeeData = parseEmployeeData();
+        HashMap<Integer, String> employeeHourlyRate = employeeData.get("hourlyRate");
+        HashMap<Integer, String> employeeName = employeeData.get("names");
+        HashMap<Integer, String> employeesBirthdays = employeeData.get("birthdays");
+
+        List<String> inList = inMap.get(id);
+        List<String> outList = outMap.get(id);
+
+        double HR = Double.parseDouble(employeeHourlyRate.get(id)); //get the hourly rate of the id associated
+        int week = 0;
+        long totalSeconds = 0;
+        long weeklySeconds = 0;
+
+        for (int i = 0; i < inList.size(); i++) {
+            //every iteration a new array is created
+            String[] inParts = inList.get(i).split(":"); //split the list data and store in an array
+            String[] outParts = outList.get(i).split(":");
+
+            int inHour = Integer.parseInt(inParts[0]);
+            int inMinute = Integer.parseInt(inParts[1]);
+            int outHour = Integer.parseInt(outParts[0]);
+            int outMinute = Integer.parseInt(outParts[1]);
+
+            //sum the seconds every loop
+            totalSeconds += hourBetweenLog(inHour, inMinute, outHour, outMinute);
+        }
+
         System.out.println("-".repeat(100));
         System.out.println("ID: " + id);
-        System.out.println("Name: " + employeesNames.get(id));
+        System.out.println("Name: " + employeeName.get(id));
         System.out.println("Birthday: " + employeesBirthdays.get(id));
         System.out.println("Total Hours: " + secondsToTime(totalSeconds));
         System.out.println("Total Gross Salary: " + grossSalaryCalculator(totalSeconds, HR));
     }
 
-    static void displayOptions(){
+    static void displayOptions() {
         System.out.println("-".repeat(100));
         System.out.println("Enter g to display gross salary per week.");
         System.out.println("Enter a to show attendance.");
         System.out.println("Enter e to go back. \n");
     }
 
-    static void displayWeeklyGrossSalary(List<String> inList, List<String> outList, long weeklySeconds, int week, double HR){
+    static void displayWeeklyGrossSalary(List<String> inList, List<String> outList, double HR) {
+        long weeklySeconds = 0;
+        int week = 0;
         for (int i = 0; i < inList.size(); i++) {
             //every iteration a new array is created
             String[] inParts = inList.get(i).split(":");
@@ -411,9 +315,15 @@ public class Main {
         }
     }
 
-    static void displayAttendance(int id, HashMap<Integer, List<String>> date, List<String> inList, List<String> outList, List<String> dateList){
-        if (date.containsKey(id)) {
+    static void displayAttendance(HashMap<Integer, List<String>> dateMap, HashMap<Integer, List<String>> inMap, HashMap<Integer, List<String>> outMap,int id) throws IOException {
+        // get the list for the specific id
+        List<String> dateList = dateMap.get(id);
+        List<String> inList = inMap.get(id);
+        List<String> outList = outMap.get(id);
+
+        if (dateMap.containsKey(id)) {
             //display header
+            System.out.println("-".repeat(100));
             System.out.printf("%-14s %-9s %-9s", "Date", "In", "Out");
             System.out.println();
             for (int i = 0; i < dateList.toArray().length; i++) {
@@ -421,5 +331,123 @@ public class Main {
                 System.out.println();
             }
         }
+    }
+
+
+    static Map<String, HashMap<Integer, String>> parseEmployeeData() throws IOException {
+        String infoFile = "src\\data_info.csv";
+        BufferedReader infoReader = new BufferedReader(new FileReader(infoFile));
+        infoReader.readLine(); //skip header
+
+        //TODO: ADD COMMENTS
+        HashMap<Integer, String> employees = new HashMap<>();
+        HashMap<Integer, String> employeesHourlyRate = new HashMap<>();
+        HashMap<Integer, String> employeesNames = new HashMap<>();
+        HashMap<Integer, String> employeesBirthdays = new HashMap<>();
+
+        String infoLine;
+        while ((infoLine = infoReader.readLine()) != null) {
+            String[] infoRow = infoLine.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
+
+            int id = Integer.parseInt(infoRow[0]);
+
+            String name = infoRow[1] + " " + infoRow[2];
+            String birthday = infoRow[3];
+            String formatted = String.format("%-25s %-25s", name, birthday);
+
+            employees.put(id, formatted);
+            employeesHourlyRate.put(id, infoRow[18]);
+            employeesNames.put(id, name);
+            employeesBirthdays.put(id, birthday);
+        }
+
+        Map<String, HashMap<Integer, String>> employeeData = new HashMap<>();
+
+        employeeData.put("employees", employees);
+        employeeData.put("hourlyRate", employeesHourlyRate);
+        employeeData.put("names", employeesNames);
+        employeeData.put("birthdays", employeesBirthdays);
+
+        return employeeData;
+    }
+
+    static Map<String, HashMap<Integer, List<String>>> parseEmployeeAttendance() throws FileNotFoundException, IOException {
+        String attendanceFile = "src\\data_attendance.csv";
+        BufferedReader attendanceReader = new BufferedReader(new FileReader(attendanceFile));
+        String attendanceLine;
+
+        // HashMaps to store data per employee ID
+        HashMap<Integer, List<String>> dateMap = new HashMap<>();
+        HashMap<Integer, List<String>> inMap = new HashMap<>();
+        HashMap<Integer, List<String>> outMap = new HashMap<>();
+
+        // Skip the header row
+        attendanceReader.readLine();
+
+        while ((attendanceLine = attendanceReader.readLine()) != null) {
+            String[] attendanceRow = attendanceLine.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
+
+            int id = Integer.parseInt(attendanceRow[0]);
+            String attendanceDate = attendanceRow[3];
+            String attendanceIn = attendanceRow[4];
+            String attendanceOut = attendanceRow[5];
+
+            //if id doesn't exist, create a new list, if it does exist then ignore
+            dateMap.putIfAbsent(id, new ArrayList<>());
+            inMap.putIfAbsent(id, new ArrayList<>());
+            outMap.putIfAbsent(id, new ArrayList<>());
+
+            //store the date to the list for that ID
+            dateMap.get(id).add(attendanceDate);
+            inMap.get(id).add(attendanceIn);
+            outMap.get(id).add(attendanceOut);
+        }
+        attendanceReader.close();
+
+        // Put all three HashMaps into a single Map and return
+        Map<String, HashMap<Integer, List<String>>> attendanceRecords = new HashMap<>();
+        attendanceRecords.put("date", dateMap);
+        attendanceRecords.put("in", inMap);
+        attendanceRecords.put("out", outMap);
+
+        return attendanceRecords;
+    }
+
+    static Map<String, List<String>> parseSSS() throws IOException {
+        String sssFile = "src\\sss_contribution.csv";
+        BufferedReader sssReader = new BufferedReader(new FileReader(sssFile));
+        String sssLine;
+
+        // Lists to store SSS ranges and contribution
+        List<String> minRange = new ArrayList<>();
+        List<String> maxRange = new ArrayList<>();
+        List<String> contribution = new ArrayList<>();
+
+        // skip header
+        sssReader.readLine();
+        sssReader.readLine();
+
+        while ((sssLine = sssReader.readLine()) != null) {
+            String[] sssRow = sssLine.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
+
+            // Clean quotes and commas from all columns
+            for (int i = 0; i < sssRow.length; i++) {
+                sssRow[i] = sssRow[i].replace("\"", "").replace(",", "");
+            }
+            // Add to lists
+            minRange.add(sssRow[0]);
+            maxRange.add(sssRow[2]);
+            contribution.add(sssRow[3]);
+        }
+
+        sssReader.close();
+
+        // Return as a single container
+        Map<String, List<String>> sss = new HashMap<>();
+        sss.put("minRange", minRange);
+        sss.put("maxRange", maxRange);
+        sss.put("contribution", contribution);
+
+        return sss;
     }
 }
