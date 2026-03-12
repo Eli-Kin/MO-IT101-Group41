@@ -19,9 +19,11 @@ public class Main {
         String attendanceFile = "src\\data_attendance.csv";
         String infoFile = "src\\data_info.csv";
         String sssCFile = "src\\sss_contribution.csv";
+
         String attendanceLine;
         String infoLine;
         String sssCLine;
+
         String[] infoRow = {};
         String[] attendanceRow = {};
         String[] sssCRow = {};
@@ -52,7 +54,10 @@ public class Main {
         HashMap<Integer, List<String>> out = new HashMap<>();
 
         //Get the data
+        //honestly, it's own method
         try {
+            //moving string paths in here
+
             attendanceReader = new BufferedReader(new FileReader(attendanceFile));
             infoReader = new BufferedReader(new FileReader(infoFile));
             sssCReader = new BufferedReader(new FileReader(sssCFile));
@@ -137,19 +142,17 @@ public class Main {
             employeesNames.put(ids.get(i), names.get(i));
             employeesBirthdays.put(ids.get(i), birthdays.get(i));
         }
+
         //After data has been stored and organised output logo and all employee data in desired format
         IntroLogo(employees);
 
         do {
-            System.out.println("-".repeat(100));
-            //input line
-            System.out.print("Enter Employee's ID: ");
+            //Asks for the employee ID
             input = sc.next();
 
-            //start of de-nestify project
             //checks if it's not an integer
             if (!isInteger(input)) {
-                System.out.println("Please input a number.");
+                System.out.println("Please enter a number.");
                 continue;
             }
 
@@ -160,7 +163,7 @@ public class Main {
             }
 
 
-            //this should probably be a method to be honest
+            //TODO: MAKE THIS A METHOD
             int id = Integer.parseInt(input); // convert input to int
             double HR = Double.parseDouble(employeesHourlyRate.get(id));
             int week = 0;
@@ -172,6 +175,8 @@ public class Main {
             inList = in.get(id);
             outList = out.get(id);
 
+
+            //for loop it's own method?
             for (int i = 0; i < inList.size(); i++) {
                 //every iteration a new array is created
                 String[] inParts = inList.get(i).split(":"); //split the list data and store in an array
@@ -185,36 +190,21 @@ public class Main {
                 //sum the seconds every loop
                 totalSeconds += hourBetweenLog(inHour, inMinute, outHour, outMinute);
             }
+            //TODO: END METHOD
+            //displays relevant employee datta
+            displayEmployeeData(id, employeesNames, employeesBirthdays, totalSeconds, HR);
 
-            //could be a method here.
-            //already did a check for if it didn't containsKey(id) earlier.
-            // if (employees.containsKey(id)) {
-            String alert = "";
-            do {
-                inEmployees = true;
-                if (!employeesNames.containsKey(id) || !employeesBirthdays.containsKey(id)) {
-                    System.out.println("ID seems to not match with either the Name or the Birthday.");
-                    continue; //p sure, sleepy rn
-                }
-
-                //note i'm going to need to fill parameters up for this
-                //TODO: put all the parameters for displayEmployeeData in
-                //TODO: figure out if if line 195 is redundant to line 157
-                displayEmployeeData();
-                //not sure if alert belongs in the method or not
-                System.out.println(alert);
-                //end method
-
+            inEmployees = true;
+            while (inEmployees) {
+                DisplayOptions();
                 input = sc.next().toLowerCase();
 
-                if (!(input.length() == 1)) {
+                if (input.length() != 1) {
                     System.out.println("Input too long.");
                     continue;
                 }
-
                 switch (input) {
                     case "g":
-                        System.out.println("worketh");
                         for (int i = 0; i < inList.size(); i++) {
                             //every iteration a new array is created
                             String[] inParts = inList.get(i).split(":");
@@ -252,15 +242,13 @@ public class Main {
                         break;
                     case "e":
                         inEmployees = false;
-                        alert = "";
                         IntroLogo(employees);
                         break;
                     default:
-                        alert = "Please input either \"g\", \"a\" or \"e\".";
+                        System.out.println("Please input either \"g\", \"a\" or \"e\".");
                         continue;
                 }
-                //end method
-            } while (inEmployees == true);
+            }
         } while (appRunning);
     }
 
@@ -391,6 +379,7 @@ public class Main {
 
     static void IntroLogo(HashMap<Integer, String> employees) {
         System.out.flush();
+        System.out.println("");
         System.out.println("-".repeat(100));
 
         System.out.println("███╗   ███╗ ██████╗ ████████╗ ██████╗ ██████╗ ██████╗ ██╗  ██╗");
@@ -409,6 +398,9 @@ public class Main {
         for (Map.Entry<Integer, String> entry : employees.entrySet()) {
             System.out.printf("%-8d %-20s%n", entry.getKey(), entry.getValue());
         }
+
+        System.out.println("-".repeat(100));
+        System.out.print("Enter Employee's ID: ");
     }
 
     public static void displayEmployeeData(int id, HashMap<Integer, String> employeesNames, HashMap<Integer, String> employeesBirthdays, long totalSeconds, double HR){
@@ -418,10 +410,12 @@ public class Main {
         System.out.println("Birthday: " + employeesBirthdays.get(id));
         System.out.println("Total Hours: " + secondsToTime(totalSeconds));
         System.out.println("Total Gross Salary: " + grossSalaryCalculator(totalSeconds, HR));
+    }
 
+    static void DisplayOptions(){
         System.out.println("-".repeat(100));
         System.out.println("Enter g to display gross salary per week.");
         System.out.println("Enter a to show attendance.");
-        System.out.println("Enter e to go back.");
+        System.out.println("Enter e to go back. \n");
     }
 }
