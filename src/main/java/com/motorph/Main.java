@@ -1,7 +1,6 @@
 package com.motorph;
 
 import java.io.*;
-import java.security.Key;
 import java.time.Duration;
 import java.time.LocalTime;
 import java.util.*;
@@ -15,16 +14,10 @@ public class Main {
     private static List<String> sssContribution = new ArrayList<>();
 
     public static void main(String[] args) {
-        //CSV Files
-        String attendanceFile = "src\\data_attendance.csv";
-        String infoFile = "src\\data_info.csv";
-        String sssCFile = "src\\sss_contribution.csv";
-
         String attendanceLine;
         String infoLine;
         String sssCLine;
 
-        String[] infoRow = {};
         String[] attendanceRow = {};
         String[] sssCRow = {};
 
@@ -36,7 +29,6 @@ public class Main {
         String input;
 
         boolean appRunning = true;
-        boolean inEmployees = false;
 
         //Declaring ArrayList for every chosen column
         List<Integer> ids = new ArrayList<>();
@@ -57,6 +49,9 @@ public class Main {
         //honestly, it's own method
         try {
             //moving string paths in here
+            String attendanceFile = "src\\data_attendance.csv";
+            String infoFile = "src\\data_info.csv";
+            String sssCFile = "src\\sss_contribution.csv";
 
             attendanceReader = new BufferedReader(new FileReader(attendanceFile));
             infoReader = new BufferedReader(new FileReader(infoFile));
@@ -66,7 +61,7 @@ public class Main {
             //assign the row and read the next line every iteration
             while (((infoLine = infoReader.readLine()) != null)) {
                 //split the string into an array
-                infoRow = infoLine.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)"); //new Array every iteration
+                String [] infoRow = infoLine.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)"); //new Array every iteration
 
                 //store ids in arraylist every iteration
                 ids.add(Integer.parseInt(infoRow[0])); //convert to int
@@ -144,7 +139,7 @@ public class Main {
         }
 
         //After data has been stored and organised output logo and all employee data in desired format
-        IntroLogo(employees);
+        displayIntro(employees);
 
         do {
             //Asks for the employee ID
@@ -163,7 +158,6 @@ public class Main {
             }
 
 
-            //TODO: MAKE THIS A METHOD
             int id = Integer.parseInt(input); // convert input to int
             double HR = Double.parseDouble(employeesHourlyRate.get(id));
             int week = 0;
@@ -190,60 +184,32 @@ public class Main {
                 //sum the seconds every loop
                 totalSeconds += hourBetweenLog(inHour, inMinute, outHour, outMinute);
             }
-            //TODO: END METHOD
-            //displays relevant employee datta
+            //displays employee data tied to the ID
             displayEmployeeData(id, employeesNames, employeesBirthdays, totalSeconds, HR);
 
-            inEmployees = true;
-            while (inEmployees) {
-                DisplayOptions();
+            //Enters a loop asking for further information about an employee
+            boolean inEmployees = true;
+            loop : while (inEmployees) {
+                displayOptions();
                 input = sc.next().toLowerCase();
 
+                //Allowed inputs are g, a, and e.
+                //Checking if input is too long
                 if (input.length() != 1) {
                     System.out.println("Input too long.");
                     continue;
                 }
+
                 switch (input) {
                     case "g":
-                        for (int i = 0; i < inList.size(); i++) {
-                            //every iteration a new array is created
-                            String[] inParts = inList.get(i).split(":");
-                            String[] outParts = outList.get(i).split(":");
-
-                            int inHour = Integer.parseInt(inParts[0]);
-                            int inMinute = Integer.parseInt(inParts[1]);
-                            int outHour = Integer.parseInt(outParts[0]);
-                            int outMinute = Integer.parseInt(outParts[1]);
-
-                            weeklySeconds += hourBetweenLog(inHour, inMinute, outHour, outMinute);
-                            //every 5 iterations
-                            if ((i + 1) % 5 == 0) {
-                                double weekGross = grossSalaryCalculator(weeklySeconds, HR);
-                                week++;
-                                System.out.println("Week " + week);
-                                System.out.println("Weekly Gross: " + weekGross);
-                                System.out.println("Weekly Net Salary: " + netGrossSalaryCalculator(weekGross));
-                                System.out.println("Hours in the Week: " + secondsToTime(weeklySeconds));
-                                System.out.println("-".repeat(20));
-                                weeklySeconds = 0; //reset weeklyseconds
-                            }
-                        }
+                        displayWeeklyGrossSalary(inList, outList, weeklySeconds, week, HR);
                         break;
                     case "a":
-                        if (date.containsKey(id)) {
-                            //display header
-                            System.out.printf("%-14s %-9s %-9s", "Date", "In", "Out");
-                            System.out.println();
-                            for (int i = 0; i < dateList.toArray().length; i++) {
-                                System.out.printf("%-14s %-9s %-9s", dateList.get(i), inList.get(i), outList.get(i));
-                                System.out.println();
-                            }
-                        }
+                        displayAttendance(id, date, inList, outList, dateList);
                         break;
                     case "e":
-                        inEmployees = false;
-                        IntroLogo(employees);
-                        break;
+                        displayIntro(employees);
+                        break loop;
                     default:
                         System.out.println("Please input either \"g\", \"a\" or \"e\".");
                         continue;
@@ -377,7 +343,7 @@ public class Main {
         return weeklyGross - totalContribution;
     }
 
-    static void IntroLogo(HashMap<Integer, String> employees) {
+    static void displayIntro(HashMap<Integer, String> employees) {
         System.out.flush();
         System.out.println("");
         System.out.println("-".repeat(100));
@@ -403,7 +369,7 @@ public class Main {
         System.out.print("Enter Employee's ID: ");
     }
 
-    public static void displayEmployeeData(int id, HashMap<Integer, String> employeesNames, HashMap<Integer, String> employeesBirthdays, long totalSeconds, double HR){
+    static void displayEmployeeData(int id, HashMap<Integer, String> employeesNames, HashMap<Integer, String> employeesBirthdays, long totalSeconds, double HR){
         System.out.println("-".repeat(100));
         System.out.println("ID: " + id);
         System.out.println("Name: " + employeesNames.get(id));
@@ -412,10 +378,48 @@ public class Main {
         System.out.println("Total Gross Salary: " + grossSalaryCalculator(totalSeconds, HR));
     }
 
-    static void DisplayOptions(){
+    static void displayOptions(){
         System.out.println("-".repeat(100));
         System.out.println("Enter g to display gross salary per week.");
         System.out.println("Enter a to show attendance.");
         System.out.println("Enter e to go back. \n");
+    }
+
+    static void displayWeeklyGrossSalary(List<String> inList, List<String> outList, long weeklySeconds, int week, double HR){
+        for (int i = 0; i < inList.size(); i++) {
+            //every iteration a new array is created
+            String[] inParts = inList.get(i).split(":");
+            String[] outParts = outList.get(i).split(":");
+
+            int inHour = Integer.parseInt(inParts[0]);
+            int inMinute = Integer.parseInt(inParts[1]);
+            int outHour = Integer.parseInt(outParts[0]);
+            int outMinute = Integer.parseInt(outParts[1]);
+
+            weeklySeconds += hourBetweenLog(inHour, inMinute, outHour, outMinute);
+            //every 5 iterations
+            if ((i + 1) % 5 == 0) {
+                double weekGross = grossSalaryCalculator(weeklySeconds, HR);
+                week++;
+                System.out.println("Week " + week);
+                System.out.println("Weekly Gross: " + weekGross);
+                System.out.println("Weekly Net Salary: " + netGrossSalaryCalculator(weekGross));
+                System.out.println("Hours in the Week: " + secondsToTime(weeklySeconds));
+                System.out.println("-".repeat(20));
+                weeklySeconds = 0; //reset weeklyseconds
+            }
+        }
+    }
+
+    static void displayAttendance(int id, HashMap<Integer, List<String>> date, List<String> inList, List<String> outList, List<String> dateList){
+        if (date.containsKey(id)) {
+            //display header
+            System.out.printf("%-14s %-9s %-9s", "Date", "In", "Out");
+            System.out.println();
+            for (int i = 0; i < dateList.toArray().length; i++) {
+                System.out.printf("%-14s %-9s %-9s", dateList.get(i), inList.get(i), outList.get(i));
+                System.out.println();
+            }
+        }
     }
 }
