@@ -57,6 +57,7 @@ public class Main {
 
             //displays employee data tied to the ID
             displayEmployeeData(employeeHourlyRate, employeeName, employeeBirthdays, inMap, outMap, chosenID);
+            displayTotalNetSalary(inList, outList, HR);
 
             //Enters a loop asking for further information about an employee
             boolean inEmployees = true;
