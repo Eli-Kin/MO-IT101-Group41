@@ -11,6 +11,7 @@ public class Main {
     private static List<String> sssCMinRange = new ArrayList<>();
     private static List<String> sssCMaxRange = new ArrayList<>();
     private static List<String> sssContribution = new ArrayList<>();
+    private static List<Double> totalNetSalary = new ArrayList<>();
 
     //ANSI escape codes for colors
     public static final String RESET = "\u001B[0m";
@@ -68,6 +69,7 @@ public class Main {
 
             //Displays employee data tied to the ID
             displayEmployeeData(employeeHourlyRate, employeeName, employeeBirthdays, inMap, outMap, chosenID);
+            displayTotalNetSalary(inList, outList, HR);
 
             //Enters a loop asking for further information about an employee
             boolean inEmployees = true;
@@ -148,7 +150,11 @@ public class Main {
         return (seconds / 3600.0) * gross;
     }
 
-    static double netGrossSalaryCalculator(double weeklyGross) {
+    static double netGrossSalaryCalculator(double weeklyGross) throws IOException {
+        Map<String, List<String>> sssCData = parseSSS();
+        sssCMinRange = sssCData.get("minRange");
+        sssCMaxRange = sssCData.get("maxRange");
+        sssContribution = sssCData.get("contribution");
 
         // Convert weekly gross to monthly equivalent
         double monthlyGross = weeklyGross * (52.0 / 12.0); // 4.333 weeks per month, 52 weeks divided by 12 months
@@ -165,7 +171,7 @@ public class Main {
             }
             double con = Double.parseDouble(sssContribution.get(i));
 
-            if (monthlyGross > min && monthlyGross <= max) {
+            if (monthlyGross >= min && monthlyGross <= max) {
                 sssMonthly = con;
             } else if (monthlyGross < 3250) {
                 sssMonthly = 135.0;
@@ -221,6 +227,7 @@ public class Main {
         double totalContribution = sssContribute + philhealthContribution + pagibigContribution + withholdingTax;
 
         // DEBUG - remove after fixing
+//        System.out.println("-".repeat(100));
 //        System.out.println("monthlyGross: " + monthlyGross);
 //        System.out.println("sssMonthly: " + sssMonthly);
 //        System.out.println("sssContribute: " + sssContribute);
@@ -290,7 +297,7 @@ public class Main {
         System.out.println("Enter t to terminate the program.\n");
     }
 
-    static void displayWeeklyGrossSalary(List<String> inList, List<String> outList, double HR) {
+    static void displayWeeklyGrossSalary(List<String> inList, List<String> outList, double HR) throws IOException {
         long weeklySeconds = 0;
         int week = 0;
         for (int i = 0; i < inList.size(); i++) {
@@ -307,15 +314,46 @@ public class Main {
             //every 5 iterations
             if ((i + 1) % 5 == 0) {
                 double weekGross = grossSalaryCalculator(weeklySeconds, HR);
+                double netSalary = netGrossSalaryCalculator(weekGross);
                 week++;
                 System.out.println("Week " + week);
                 System.out.println("Weekly Gross: " + weekGross);
-                System.out.println("Weekly Net Salary: " + netGrossSalaryCalculator(weekGross));
+                System.out.println("Weekly Net Salary: " + netSalary);
                 System.out.println("Hours in the Week: " + secondsToTime(weeklySeconds));
                 System.out.println("-".repeat(20));
                 weeklySeconds = 0; //reset weeklyseconds
             }
         }
+    }
+  
+   static void displayTotalNetSalary(List<String> inList, List<String> outList, double HR) throws IOException {
+        long weeklySeconds = 0;
+        double total = 0;
+        for (int i = 0; i < inList.size(); i++) {
+            //every iteration a new array is created
+            String[] inParts = inList.get(i).split(":");
+            String[] outParts = outList.get(i).split(":");
+
+            int inHour = Integer.parseInt(inParts[0]);
+            int inMinute = Integer.parseInt(inParts[1]);
+            int outHour = Integer.parseInt(outParts[0]);
+            int outMinute = Integer.parseInt(outParts[1]);
+
+            weeklySeconds += hourBetweenLog(inHour, inMinute, outHour, outMinute);
+            //every 5 iterations
+            if ((i + 1) % 5 == 0) {
+                double weekGross = grossSalaryCalculator(weeklySeconds, HR);
+                double netSalary = netGrossSalaryCalculator(weekGross);
+                totalNetSalary.add(netSalary);
+                weeklySeconds = 0; //reset weeklyseconds
+            }
+        }
+
+        for (int i = 0; i < totalNetSalary.size(); i++){
+            total += totalNetSalary.get(i);
+        }
+
+        System.out.println("Total Net Salary: " + total);
     }
 
     static void displayAttendance(HashMap<Integer, List<String>> dateMap, List<String> inList, List<String> outList, List<String> dateList, int chosenID) throws IOException {
