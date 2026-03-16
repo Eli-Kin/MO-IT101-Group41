@@ -13,6 +13,8 @@ public class Main {
     private static List<String> sssContribution = new ArrayList<>();
     private static List<Double> totalNetSalary = new ArrayList<>();
 
+    private static int employeeCount;
+
     public static void main(String[] args) throws IOException {
         Scanner sc = new Scanner(System.in);
         String input;
@@ -238,6 +240,7 @@ public class Main {
         System.out.println();
         //display hashmap employees' data
         for (Map.Entry<Integer, String> entry : employees.entrySet()) {
+            employeeCount++;
             System.out.printf("%-8d %-20s%n", entry.getKey(), entry.getValue());
         }
 
