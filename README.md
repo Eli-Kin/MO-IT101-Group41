@@ -5,10 +5,10 @@ MotorPH Basic Payroll System A Java payroll system that calculates semi-monthly 
 ---
 
 ## MO-IT101 Group 41 Members
-- Ellijah Gabriel Tajo
-- Elijah King de Dios
-- Elaine Frances Corpuz
-- Donn Andrei Fransisco
+- Ellijah Gabriel Tajo: lr.egtajo@mmdc.mcl.edu.ph
+- Elijah King de Dios: lr.ekdedios@mmdc.mcl.edu.ph
+- Elaine Frances Corpuz: lr.efcorpuz@mmdc.mcl.edu.ph
+- Donn Andrei Fransisco: lr.dafrancisco@mmdc.mcl.edu.ph
 
 ---
 
