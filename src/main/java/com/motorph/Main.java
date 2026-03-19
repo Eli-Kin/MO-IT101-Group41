@@ -5,8 +5,6 @@ import java.time.Duration;
 import java.time.LocalTime;
 import java.util.*;
 
-//TODO: add automatic calculations
-
 public class Main {
     private static List<String> sssCMinRange = new ArrayList<>();
     private static List<String> sssCMaxRange = new ArrayList<>();
@@ -70,11 +68,12 @@ public class Main {
 
             //Displays employee data tied to the ID
             displayEmployeeData(employeeHourlyRate, employeeName, employeeBirthdays, inMap, outMap, chosenID);
-            displayTotalNetSalary(inList, outList, HR);
+            displayTotalNetSalary(inList, outList, dateList, HR);
 
             //Enters a loop asking for further information about an employee
             boolean inEmployees = true;
-            loop: while (inEmployees) {
+            loop:
+            while (inEmployees) {
                 displayOptions();
                 input = sc.next().toLowerCase();
 
@@ -87,7 +86,7 @@ public class Main {
                 switch (input) {
                     case "g":
                         //Display weekly gross salary
-                        displayWeeklyGrossSalary(inList, outList, HR);
+                        displaySalary(dateList, inList, outList, HR);
                         break;
                     case "a":
                         //Display attendance
@@ -128,15 +127,15 @@ public class Main {
         LocalTime logIn = LocalTime.of(inHour, inMinute);
         LocalTime logOut = LocalTime.of(outHour, outMinute);
 
-        // only count 8:00 AM to 5:00 PM
-        if (logIn.isBefore(LocalTime.of(8, 0))) {
+        // only count 8:00 AM to 5:00 PM, 10min Grace period
+        if (logIn.isBefore(LocalTime.of(8, 10))) {
             logIn = LocalTime.of(8, 0);
         }
         if (logOut.isAfter(LocalTime.of(17, 0))) {
             logOut = LocalTime.of(17, 0);
         }
-
-        return Duration.between(logIn, logOut).getSeconds();
+        //1 hour lunch period, 3600 seconds in one hour
+        return Duration.between(logIn, logOut).getSeconds() - 3600;
     }
 
     static String secondsToTime(long totalSeconds) {
@@ -151,17 +150,14 @@ public class Main {
         return (seconds / 3600.0) * gross;
     }
 
-    static double netGrossSalaryCalculator(double weeklyGross) throws IOException {
+    static double netGrossSalaryCalculator(double monthlyGross) throws IOException {
         Map<String, List<String>> sssCData = parseSSS();
         sssCMinRange = sssCData.get("minRange");
         sssCMaxRange = sssCData.get("maxRange");
         sssContribution = sssCData.get("contribution");
 
-        // Convert weekly gross to monthly equivalent
-        double monthlyGross = weeklyGross * (52.0 / 12.0); // 4.333 weeks per month, 52 weeks divided by 12 months
-
         // SSS Contribution
-        double sssMonthly = 0;
+        double sssContribution = 0;
         for (int i = 0; i < sssCMinRange.size(); i++) {
             double min = Double.parseDouble(sssCMinRange.get(i));
             double max;
@@ -170,75 +166,71 @@ public class Main {
             } else {
                 max = Double.parseDouble(sssCMaxRange.get(i));
             }
-            double con = Double.parseDouble(sssContribution.get(i));
+            double con = Double.parseDouble(Main.sssContribution.get(i));
 
             if (monthlyGross >= min && monthlyGross <= max) {
-                sssMonthly = con;
+                sssContribution = con;
             } else if (monthlyGross < 3250) {
-                sssMonthly = 135.0;
+                sssContribution = 135.0;
             }
         }
-        double sssContribute = sssMonthly / (52.0 / 12.0); // weekly share
 
         // PhilHealth
         double premiumMonthly = Math.min(monthlyGross * 0.03, 1800); //maximum contribution is 1800
-        double philhealthContribution = (premiumMonthly * 0.5) / (52.0 / 12.0);
+        double philhealthContribution = (premiumMonthly * 0.5);
 
         // Pag-ibig
-        double pgTotalRate = 0;
+        double pagibigTotalRate = 0;
         if (monthlyGross >= 1000 && monthlyGross < 1500) {
-            pgTotalRate = 0.03;
+            pagibigTotalRate = 0.03;
         } else if (monthlyGross > 1500) {
-            pgTotalRate = 0.04;
+            pagibigTotalRate = 0.04;
         }
-        double pagibigContribution = Math.min(monthlyGross * pgTotalRate, 100) / (52.0 / 12.0);
+        double pagibigContribution = Math.min(monthlyGross * pagibigTotalRate, 100);
 
         // Withholding Tax
         double taxRate = 0;
         double excess = 0;
         double plus = 0;
-        double withholdingTaxMonthly = 0;
+        double withholdingTax = 0;
         if (monthlyGross > 20833 && monthlyGross <= 33333) {
             taxRate = 0.20;
             excess = 20833;
-            withholdingTaxMonthly = (monthlyGross - excess) * taxRate;
+            withholdingTax = (monthlyGross - excess) * taxRate;
         } else if (monthlyGross > 33333 && monthlyGross <= 66667) {
             taxRate = 0.25;
             excess = 33333;
             plus = 2500;
-            withholdingTaxMonthly = plus + (monthlyGross - excess) * taxRate;
+            withholdingTax = plus + (monthlyGross - excess) * taxRate;
         } else if (monthlyGross > 66667 && monthlyGross <= 166667) {
             taxRate = 0.30;
             excess = 66667;
             plus = 10833;
-            withholdingTaxMonthly = plus + (monthlyGross - excess) * taxRate;
+            withholdingTax = plus + (monthlyGross - excess) * taxRate;
         } else if (monthlyGross > 166667 && monthlyGross <= 666667) {
             taxRate = 0.32;
             excess = 166667;
             plus = 40833.33;
-            withholdingTaxMonthly = plus + (monthlyGross - excess) * taxRate;
+            withholdingTax = plus + (monthlyGross - excess) * taxRate;
         } else if (monthlyGross > 666667) {
             taxRate = 0.35;
             excess = 666667;
             plus = 200833.33;
-            withholdingTaxMonthly = plus + (monthlyGross - excess) * taxRate;
+            withholdingTax = plus + (monthlyGross - excess) * taxRate;
         }
-        double withholdingTax = withholdingTaxMonthly / (52.0 / 12.0);
 
-        double totalContribution = sssContribute + philhealthContribution + pagibigContribution + withholdingTax;
+        double totalContribution = sssContribution + philhealthContribution + pagibigContribution + withholdingTax;
 
         // DEBUG - remove after fixing
 //        System.out.println("-".repeat(100));
 //        System.out.println("monthlyGross: " + monthlyGross);
-//        System.out.println("sssMonthly: " + sssMonthly);
-//        System.out.println("sssContribute: " + sssContribute);
+//        System.out.println("sssContribute: " + sssContribution);
 //        System.out.println("philhealth: " + philhealthContribution);
 //        System.out.println("pagibig: " + pagibigContribution);
-//        System.out.println("withholdingTaxMonthly: " + withholdingTaxMonthly);
 //        System.out.println("withholdingTax weekly: " + withholdingTax);
 //        System.out.println("totalContribution: " + totalContribution);
 
-        return weeklyGross - totalContribution;
+        return monthlyGross - totalContribution;
     }
 
     static void displayIntro(HashMap<Integer, String> employees) throws IOException {
@@ -299,63 +291,99 @@ public class Main {
         System.out.println("Enter t to terminate the program.\n");
     }
 
-    static void displayWeeklyGrossSalary(List<String> inList, List<String> outList, double HR) throws IOException {
-        long weeklySeconds = 0;
-        int week = 0;
+    //TODO: Apply deductions only on the second cutoff.
+    static HashMap<Integer, long[]> buildMonthSeconds(List<String> dateList, List<String> inList, List<String> outList) {
+        HashMap<Integer, long[]> monthSeconds = new HashMap<>();
+
         for (int i = 0; i < inList.size(); i++) {
-            //every iteration a new array is created
             String[] inParts = inList.get(i).split(":");
             String[] outParts = outList.get(i).split(":");
+            String[] dateParts = dateList.get(i).split("/");
+
+            int month = Integer.parseInt(dateParts[0]);
+            int workDay = Integer.parseInt(dateParts[1]);
 
             int inHour = Integer.parseInt(inParts[0]);
             int inMinute = Integer.parseInt(inParts[1]);
             int outHour = Integer.parseInt(outParts[0]);
             int outMinute = Integer.parseInt(outParts[1]);
 
-            weeklySeconds += hourBetweenLog(inHour, inMinute, outHour, outMinute);
-            //every 5 iterations
-            if ((i + 1) % 5 == 0) {
-                double weekGross = grossSalaryCalculator(weeklySeconds, HR);
-                double netSalary = netGrossSalaryCalculator(weekGross);
-                week++;
-                System.out.println("Week " + week);
-                System.out.println("Weekly Gross: " + weekGross);
-                System.out.println("Weekly Net Salary: " + netSalary);
-                System.out.println("Hours in the Week: " + secondsToTime(weeklySeconds));
-                System.out.println("-".repeat(20));
-                weeklySeconds = 0; //reset weeklyseconds
+            monthSeconds.putIfAbsent(month, new long[]{0L, 0L});
+
+            long seconds = hourBetweenLog(inHour, inMinute, outHour, outMinute);
+            if (workDay <= 15) {
+                monthSeconds.get(month)[0] += seconds;
+            } else {
+                monthSeconds.get(month)[1] += seconds;
             }
         }
+        return monthSeconds;
     }
-  
-   static void displayTotalNetSalary(List<String> inList, List<String> outList, double HR) throws IOException {
-        long weeklySeconds = 0;
+
+    static double calculateTotalNetSalary(HashMap<Integer, long[]> monthSeconds, double HR) throws IOException {
         double total = 0;
-        for (int i = 0; i < inList.size(); i++) {
-            //every iteration a new array is created
-            String[] inParts = inList.get(i).split(":");
-            String[] outParts = outList.get(i).split(":");
+        for (int month : monthSeconds.keySet()) {
+            double firstGross = grossSalaryCalculator(monthSeconds.get(month)[0], HR);
+            double secondGross = grossSalaryCalculator(monthSeconds.get(month)[1], HR);
+            total += firstGross + netGrossSalaryCalculator(secondGross);
+        }
+        return total;
+    }
 
-            int inHour = Integer.parseInt(inParts[0]);
-            int inMinute = Integer.parseInt(inParts[1]);
-            int outHour = Integer.parseInt(outParts[0]);
-            int outMinute = Integer.parseInt(outParts[1]);
+    static void displayTotalNetSalary(List<String> inList, List<String> outList, List<String> dateList, double HR) throws IOException {
+        HashMap<Integer, long[]> monthSeconds = buildMonthSeconds(dateList, inList, outList);
+        System.out.println("Total Net Salary: PHP " + calculateTotalNetSalary(monthSeconds, HR));
+    }
 
-            weeklySeconds += hourBetweenLog(inHour, inMinute, outHour, outMinute);
-            //every 5 iterations
-            if ((i + 1) % 5 == 0) {
-                double weekGross = grossSalaryCalculator(weeklySeconds, HR);
-                double netSalary = netGrossSalaryCalculator(weekGross);
-                totalNetSalary.add(netSalary);
-                weeklySeconds = 0; //reset weeklyseconds
-            }
+    static void displaySalary(List<String> dateList, List<String> inList, List<String> outList, double HR) throws IOException {
+        HashMap<Integer, long[]> monthSeconds = buildMonthSeconds(dateList, inList, outList);
+
+        for (int month : monthSeconds.keySet()) {
+            long firstCutoffSeconds = monthSeconds.get(month)[0];
+            long secondCutoffSeconds = monthSeconds.get(month)[1];
+
+            double firstGross = grossSalaryCalculator(firstCutoffSeconds, HR);
+            double secondGross = grossSalaryCalculator(secondCutoffSeconds, HR);
+            double netSalary = netGrossSalaryCalculator(secondGross);
+
+            System.out.println("=".repeat(40));
+            System.out.println("Month : " + getMonthName(month));
+            System.out.println("-".repeat(40));
+
+            System.out.println("1st Cutoff (Days 1-15)");
+            System.out.println("  Hours : " + secondsToTime(firstCutoffSeconds));
+            System.out.println("  Gross : PHP " + firstGross);
+            System.out.println("  Net   : " + firstGross + " (deductions applied on 2nd cutoff)");
+            System.out.println("-".repeat(40));
+
+            System.out.println("2nd Cutoff (Days 16-End)");
+            System.out.println("  Hours : " + secondsToTime(secondCutoffSeconds));
+            System.out.println("  Gross : PHP " + secondGross);
+            System.out.println("  Net   : PHP " + netSalary);
+            System.out.println("-".repeat(40));
+            System.out.println("=".repeat(40));
+            System.out.println();
         }
 
-        for (int i = 0; i < totalNetSalary.size(); i++){
-            total += totalNetSalary.get(i);
-        }
+        System.out.println("Total Net Salary: PHP " + calculateTotalNetSalary(monthSeconds, HR));
+    }
 
-        System.out.println("Total Net Salary: " + total);
+    // Separate method for resolving month names
+    static String getMonthName(int month) {
+        switch (month) {
+            case 1:  return "January";
+            case 2:  return "February";
+            case 3:  return "March";
+            case 4:  return "April";
+            case 5:  return "May";
+            case 6:  return "June";
+            case 7:  return "July";
+            case 8:  return "August";
+            case 9:  return "September";
+            case 10: return "October";
+            case 11: return "November";
+            default: return "December";
+        }
     }
 
     static void displayAttendance(HashMap<Integer, List<String>> dateMap, List<String> inList, List<String> outList, List<String> dateList, int chosenID) throws IOException {
@@ -493,16 +521,16 @@ public class Main {
         return sss;
     }
 
-    static void displayLogo(){
+    static void displayLogo() {
         System.out.println("");
         System.out.println("-".repeat(100));
 
         System.out.println("███╗   " + BLUE + "███╗ ██████╗ ████████╗ ██████╗ ██████╗ ██████╗ ██╗  ██╗" + RESET);
-        System.out.println("████╗ ███" + BLUE +"█║██╔═══██╗╚══██╔══╝██╔═══██╗██╔══██╗██╔══██╗██║  ██║"  + RESET);
-        System.out.println("██╔████╔██║█" + BLUE +"█║   ██║   ██║   ██║   ██║██████╔╝██████╔╝███████║"  + RESET);
-        System.out.println("██║╚██╔╝██"+ RED + "║██║   ██║   ██║   ██║   ██║██╔══██╗██╔═══╝ ██╔══██║"  + RESET);
-        System.out.println("██║ ╚═╝ █"+ RED + "█║╚██████╔╝   ██║   ╚██████╔╝██║  ██║██║     ██║  ██║" + RESET);
-        System.out.println("╚═╝     "+ RED + "╚═╝ ╚═════╝    ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝"  + RESET);
+        System.out.println("████╗ ███" + BLUE + "█║██╔═══██╗╚══██╔══╝██╔═══██╗██╔══██╗██╔══██╗██║  ██║" + RESET);
+        System.out.println("██╔████╔██║█" + BLUE + "█║   ██║   ██║   ██║   ██║██████╔╝██████╔╝███████║" + RESET);
+        System.out.println("██║╚██╔╝██" + RED + "║██║   ██║   ██║   ██║   ██║██╔══██╗██╔═══╝ ██╔══██║" + RESET);
+        System.out.println("██║ ╚═╝ █" + RED + "█║╚██████╔╝   ██║   ╚██████╔╝██║  ██║██║     ██║  ██║" + RESET);
+        System.out.println("╚═╝     " + RED + "╚═╝ ╚═════╝    ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝" + RESET);
 
         System.out.println("-".repeat(100));
 
