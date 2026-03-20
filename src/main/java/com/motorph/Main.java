@@ -122,7 +122,7 @@ public class Main {
     }
 
     //Calculate the hours between log in and log out
-    static long hourBetweenLog(int inHour, int inMinute, int outHour, int outMinute) {
+    static long secondsBetweenLog(int inHour, int inMinute, int outHour, int outMinute) {
         //convert int into time.
         LocalTime logIn = LocalTime.of(inHour, inMinute);
         LocalTime logOut = LocalTime.of(outHour, outMinute);
@@ -134,8 +134,20 @@ public class Main {
         if (logOut.isAfter(LocalTime.of(17, 0))) {
             logOut = LocalTime.of(17, 0);
         }
-        //1 hour lunch period, 3600 seconds in one hour
-        return Duration.between(logIn, logOut).getSeconds() - 3600;
+        //If invalid or reversed times
+        if (logOut.isBefore(logIn)) {
+            return 0;
+        }
+
+        //Cap at 8 hours (28800 seconds)
+        long secondsBetween = Math.min(Duration.between(logIn, logOut).getSeconds(), 28800);
+
+        //Deduct 1-hour lunch if worked more than 5 hours
+        if (secondsBetween > 18000) {
+            secondsBetween -= 3600;
+        }
+
+        return secondsBetween;
     }
 
     static String secondsToTime(long totalSeconds) {
@@ -146,18 +158,14 @@ public class Main {
         return hours + "h " + minutes + "m ";
     }
 
-    static double grossSalaryCalculator(long seconds, double gross) {
-        return (seconds / 3600.0) * gross;
-    }
-
-    static double netGrossSalaryCalculator(double monthlyGross) throws IOException {
+    static double computeSSS(double monthlyGross) throws IOException {
         Map<String, List<String>> sssCData = parseSSS();
         sssCMinRange = sssCData.get("minRange");
         sssCMaxRange = sssCData.get("maxRange");
         sssContribution = sssCData.get("contribution");
 
         // SSS Contribution
-        double sssContribution = 0;
+        double sssTotalContribution = 0;
         for (int i = 0; i < sssCMinRange.size(); i++) {
             double min = Double.parseDouble(sssCMinRange.get(i));
             double max;
@@ -169,17 +177,23 @@ public class Main {
             double con = Double.parseDouble(Main.sssContribution.get(i));
 
             if (monthlyGross >= min && monthlyGross <= max) {
-                sssContribution = con;
+                sssTotalContribution = con;
             } else if (monthlyGross < 3250) {
-                sssContribution = 135.0;
+                sssTotalContribution = 135.0;
             }
         }
 
-        // PhilHealth
+        return sssTotalContribution;
+    }
+
+    static double computePhilHealth(double monthlyGross) {
         double premiumMonthly = Math.min(monthlyGross * 0.03, 1800); //maximum contribution is 1800
         double philhealthContribution = (premiumMonthly * 0.5);
 
-        // Pag-ibig
+        return philhealthContribution;
+    }
+
+    static double computePagibig(double monthlyGross) {
         double pagibigTotalRate = 0;
         if (monthlyGross >= 1000 && monthlyGross < 1500) {
             pagibigTotalRate = 0.03;
@@ -188,7 +202,10 @@ public class Main {
         }
         double pagibigContribution = Math.min(monthlyGross * pagibigTotalRate, 100);
 
-        // Withholding Tax
+        return pagibigContribution;
+    }
+
+    static double computeWithholdingTax(double monthlyGross) {
         double taxRate = 0;
         double excess = 0;
         double plus = 0;
@@ -219,7 +236,22 @@ public class Main {
             withholdingTax = plus + (monthlyGross - excess) * taxRate;
         }
 
-        double totalContribution = sssContribution + philhealthContribution + pagibigContribution + withholdingTax;
+        return withholdingTax;
+    }
+
+    static double grossSalaryCalculator(long seconds, double gross) {
+        double hour = seconds / 3600.0; //convert seconds to hour
+        return hour * gross;
+    }
+
+    static double netGrossSalaryCalculator(double monthlyGross) throws IOException {
+
+        double sssTotalContribution = computeSSS(monthlyGross);
+        double philhealthContribution = computePhilHealth(monthlyGross);
+        double pagibigContribution = computePagibig(monthlyGross);
+        double withholdingTax = computeWithholdingTax(monthlyGross);
+
+        double totalContribution = sssTotalContribution + philhealthContribution + pagibigContribution + withholdingTax;
 
         // DEBUG - remove after fixing
 //        System.out.println("-".repeat(100));
@@ -257,9 +289,7 @@ public class Main {
         List<String> outList = outMap.get(id);
 
         double HR = Double.parseDouble(employeeHourlyRate.get(id)); //get the hourly rate of the id associated
-        int week = 0;
         long totalSeconds = 0;
-        long weeklySeconds = 0;
 
         for (int i = 0; i < inList.size(); i++) {
             //every iteration a new array is created
@@ -272,7 +302,7 @@ public class Main {
             int outMinute = Integer.parseInt(outParts[1]);
 
             //sum the seconds every loop
-            totalSeconds += hourBetweenLog(inHour, inMinute, outHour, outMinute);
+            totalSeconds += secondsBetweenLog(inHour, inMinute, outHour, outMinute);
         }
 
         System.out.println("-".repeat(100));
@@ -285,7 +315,7 @@ public class Main {
 
     static void displayOptions() {
         System.out.println("-".repeat(100));
-        System.out.println("Enter g to display gross salary per week.");
+        System.out.println("Enter g to display payroll.");
         System.out.println("Enter a to show attendance.");
         System.out.println("Enter e to go back.");
         System.out.println("Enter t to terminate the program.\n");
@@ -310,7 +340,7 @@ public class Main {
 
             monthSeconds.putIfAbsent(month, new long[]{0L, 0L});
 
-            long seconds = hourBetweenLog(inHour, inMinute, outHour, outMinute);
+            long seconds = secondsBetweenLog(inHour, inMinute, outHour, outMinute);
             if (workDay <= 15) {
                 monthSeconds.get(month)[0] += seconds;
             } else {
@@ -361,6 +391,10 @@ public class Main {
             System.out.println("  Gross : PHP " + secondGross);
             System.out.println("  Net   : PHP " + netSalary);
             System.out.println("-".repeat(40));
+            System.out.println("SSS: " + computeSSS(secondGross));
+            System.out.println("PhilHealth: " + computePhilHealth(secondGross));
+            System.out.println("Pagibig: " + computePagibig(secondGross));
+            System.out.println("Withholding Tax: " + computeWithholdingTax(secondGross));
             System.out.println("=".repeat(40));
             System.out.println();
         }
@@ -371,18 +405,30 @@ public class Main {
     // Separate method for resolving month names
     static String getMonthName(int month) {
         switch (month) {
-            case 1:  return "January";
-            case 2:  return "February";
-            case 3:  return "March";
-            case 4:  return "April";
-            case 5:  return "May";
-            case 6:  return "June";
-            case 7:  return "July";
-            case 8:  return "August";
-            case 9:  return "September";
-            case 10: return "October";
-            case 11: return "November";
-            default: return "December";
+            case 1:
+                return "January";
+            case 2:
+                return "February";
+            case 3:
+                return "March";
+            case 4:
+                return "April";
+            case 5:
+                return "May";
+            case 6:
+                return "June";
+            case 7:
+                return "July";
+            case 8:
+                return "August";
+            case 9:
+                return "September";
+            case 10:
+                return "October";
+            case 11:
+                return "November";
+            default:
+                return "December";
         }
     }
 
