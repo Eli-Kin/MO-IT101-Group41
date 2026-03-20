@@ -266,7 +266,7 @@ public class Main {
             System.out.println("  Gross : PHP " + secondGross);
             System.out.println("  Net   : PHP " + netSalary);
             System.out.println("-".repeat(40));
-            System.out.println("Contributions: ");
+            System.out.println("Deductions");
             System.out.println("SSS             : " + computeSSS(secondGross));
             System.out.println("PhilHealth      : " + computePhilHealth(secondGross));
             System.out.println("Pagibig         : " + computePagibig(secondGross));
