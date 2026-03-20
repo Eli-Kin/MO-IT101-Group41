@@ -1,15 +1,20 @@
 package com.motorph;
 
 import java.io.*;
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalTime;
 import java.util.*;
 
 public class Main {
+
+    //------------------------------------------------------------------------------------------------------------------------------
+    //VARIABLES
+    //------------------------------------------------------------------------------------------------------------------------------
+
     private static List<String> sssCMinRange = new ArrayList<>();
     private static List<String> sssCMaxRange = new ArrayList<>();
     private static List<String> sssContribution = new ArrayList<>();
-    private static List<Double> totalNetSalary = new ArrayList<>();
 
     private static int employeeCount;
     //ANSI escape codes for colors
@@ -21,7 +26,9 @@ public class Main {
     //\u001B + [xx, where xx is code.
     public static final String TEMPLATE = "\u001B[34m";
 
+    //Gather employee data
     private static Map<String, HashMap<Integer, String>> employeeData;
+
     static {
         try {
             employeeData = parseEmployeeData();
@@ -36,18 +43,257 @@ public class Main {
     private static HashMap<Integer, String> employeeBirthdays = employeeData.get("birthdays");
     private static HashMap<Integer, String> employeesPosition = employeeData.get("positions");
 
+    //Gather data regarding employee attendance
+    private static Map<String, HashMap<Integer, List<String>>> attendanceData;
+
+    static {
+        try {
+            attendanceData = parseEmployeeAttendance();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static HashMap<Integer, List<String>> dateMap = attendanceData.get("date");
+    private static HashMap<Integer, List<String>> inMap = attendanceData.get("in");
+    private static HashMap<Integer, List<String>> outMap = attendanceData.get("out");
+
+    //------------------------------------------------------------------------------------------------------------------------------
+    //MAIN METHOD
+    //------------------------------------------------------------------------------------------------------------------------------
+
     public static void main(String[] args) throws IOException {
         Scanner sc = new Scanner(System.in);
         String input = "";
 
         //After data has been stored and organised output logo and all employee data and declare and initialize appRunning as true
         boolean appRunning = true;
+        loginMenu(appRunning, input, sc);
+    }
+
+    //------------------------------------------------------------------------------------------------------------------------------
+    //LOGIN MENU
+    //------------------------------------------------------------------------------------------------------------------------------
+
+    static void loginMenu(boolean appRunning, String input, Scanner sc) throws IOException {
+        HashMap<String, Integer> passwords = new HashMap<>();
+        HashMap<String, Integer> usernames = new HashMap<>();
+
+        String[] payrollStaff = {
+                "Payroll Manager",
+                "Payroll Team Leader",
+                "Payroll Rank and File",
+        };
+
+        for (int employees : employeeName.keySet()) {
+            //Store Passwords
+            passwords.put(employeeName.get(employees).toLowerCase().replace(" ", "") + employees, employees);
+            //Store Usernames
+            usernames.put(employeeName.get(employees).toLowerCase().replace(" ", ""), employees);
+        }
+
         do {
+            String inputtedUsername = "";
+            String inputtedPassword = "";
+            //Display Logo
             displayLogo();
-            loginMenu(input, sc);
-            displayIntro(employees);
+            System.out.println("Enter e to exit the program");
+            System.out.println("Enter Username: ");
+            input = sc.next();
+            if (Objects.equals(input, "e")) {
+                //Terminate the program
+                System.out.println("Terminating program. Thank you for using the MotorPH payroll display system");
+                displayLogo();
+                appRunning = false;
+                break;
+            } else {
+                inputtedUsername = input;
+            }
+
+            System.out.println("Enter Password: ");
+            input = sc.next();
+            if (Objects.equals(input, "e")) {
+                //Terminate the program
+                System.out.println("Terminating program. Thank you for using the MotorPH payroll display system");
+                displayLogo();
+                appRunning = false;
+                break;
+            } else {
+                inputtedPassword = input;
+            }
+
+            boolean loginConditions = usernames.containsKey(inputtedUsername) && passwords.containsKey(inputtedPassword) && usernames.get(inputtedUsername).equals(passwords.get(inputtedPassword));
+            if (loginConditions) {
+                int employeeId = usernames.get(inputtedUsername);
+                String employeePosition = employeesPosition.get(employeeId);
+
+                boolean adminAccess = Arrays.asList(payrollStaff).contains(employeePosition);
+
+                if (adminAccess) {
+                    payrollStaffAccess(input, sc);
+                } else {
+                    employeeAccess(appRunning, String.valueOf(employeeId), sc);
+                }
+            } else {
+                System.out.println("Either username or password are wrong.");
+            }
+        } while (appRunning);
+
+    }
+
+    //------------------------------------------------------------------------------------------------------------------------------
+    //DISPLAY METHODS
+    //------------------------------------------------------------------------------------------------------------------------------
+
+    static void displayLogo() {
+        System.out.println("");
+        System.out.println("-".repeat(100));
+
+        System.out.println("███╗   " + BLUE + "███╗ ██████╗ ████████╗ ██████╗ ██████╗ ██████╗ ██╗  ██╗" + RESET);
+        System.out.println("████╗ ███" + BLUE + "█║██╔═══██╗╚══██╔══╝██╔═══██╗██╔══██╗██╔══██╗██║  ██║" + RESET);
+        System.out.println("██╔████╔██║█" + BLUE + "█║   ██║   ██║   ██║   ██║██████╔╝██████╔╝███████║" + RESET);
+        System.out.println("██║╚██╔╝██" + RED + "║██║   ██║   ██║   ██║   ██║██╔══██╗██╔═══╝ ██╔══██║" + RESET);
+        System.out.println("██║ ╚═╝ █" + RED + "█║╚██████╔╝   ██║   ╚██████╔╝██║  ██║██║     ██║  ██║" + RESET);
+        System.out.println("╚═╝     " + RED + "╚═╝ ╚═════╝    ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝" + RESET);
+
+        System.out.println("-".repeat(100));
+
+    }
+
+    static void displayIntro(HashMap<Integer, String> employees) throws IOException {
+        //Clear console and display the logo
+        System.out.flush();
+
+        System.out.println("-".repeat(100));
+        //display header
+        System.out.printf("%-8s %-25s %-25s", "ID", "Name", "Birthday");
+        System.out.println();
+        //display hashmap employees' data
+        for (Map.Entry<Integer, String> entry : employees.entrySet()) {
+            employeeCount++;
+            System.out.printf("%-8d %-20s%n", entry.getKey(), entry.getValue());
+        }
+        System.out.println("-".repeat(100));
+        System.out.println("Enter l to logout.");
+        System.out.print("Enter Employee's ID: ");
+    }
+
+    static void displayEmployeeData(HashMap<Integer, String> employeeHourlyRate, HashMap<Integer, String> employeeName, HashMap<Integer, String> employeeBirthdays, HashMap<Integer, List<String>> inMap, HashMap<Integer, List<String>> outMap, int id) throws IOException {
+        List<String> inList = inMap.get(id);
+        List<String> outList = outMap.get(id);
+
+        double HR = Double.parseDouble(employeeHourlyRate.get(id)); //get the hourly rate of the id associated
+        long totalSeconds = 0;
+
+        for (int i = 0; i < inList.size(); i++) {
+            //every iteration a new array is created
+            String[] inParts = inList.get(i).split(":"); //split the list data and store in an array
+            String[] outParts = outList.get(i).split(":");
+
+            int inHour = Integer.parseInt(inParts[0]);
+            int inMinute = Integer.parseInt(inParts[1]);
+            int outHour = Integer.parseInt(outParts[0]);
+            int outMinute = Integer.parseInt(outParts[1]);
+
+            //sum the seconds every loop
+            totalSeconds += secondsBetweenLog(inHour, inMinute, outHour, outMinute);
+        }
+
+        System.out.println("-".repeat(100));
+        System.out.println("ID: " + id);
+        System.out.println("Name: " + employeeName.get(id));
+        System.out.println("Birthday: " + employeeBirthdays.get(id));
+        System.out.println("Total Hours: " + secondsToTime(totalSeconds));
+        System.out.println("Total Gross Salary: " + computeGrossSalary(totalSeconds, HR));
+    }
+
+    static void displayAttendance(HashMap<Integer, List<String>> dateMap, List<String> inList, List<String> outList, List<String> dateList, int chosenID) throws IOException {
+        if (dateMap.containsKey(chosenID)) {
+            //display header
+            System.out.println("-".repeat(100));
+            System.out.printf("%-14s %-9s %-9s", "Date", "In", "Out");
+            System.out.println();
+            for (int i = 0; i < dateList.toArray().length; i++) {
+                System.out.printf("%-14s %-9s %-9s", dateList.get(i), inList.get(i), outList.get(i));
+                System.out.println();
+            }
+        }
+    }
+
+    static void displayPayrollStaffOptions() {
+        System.out.println("-".repeat(100));
+        System.out.println("Enter g to display payroll.");
+        System.out.println("Enter a to show attendance.");
+        System.out.println("Enter e to go back.");
+    }
+
+    static void displayEmployeeOptions() {
+        System.out.println("-".repeat(100));
+        System.out.println("Enter g to display payroll.");
+        System.out.println("Enter l to logout.\n");
+    }
+
+    static void displayTotalNetSalary(List<String> inList, List<String> outList, List<String> dateList, double HR) throws IOException {
+        HashMap<Integer, long[]> monthSeconds = buildMonthSeconds(dateList, inList, outList);
+        System.out.println("Total Net Salary: PHP " + computeTotalNetSalary(monthSeconds, HR));
+    }
+
+    static void displayMonthlySalary(List<String> dateList, List<String> inList, List<String> outList, double HR) throws IOException {
+        HashMap<Integer, long[]> monthSeconds = buildMonthSeconds(dateList, inList, outList);
+
+        for (int month : monthSeconds.keySet()) {
+            long firstCutoffSeconds = monthSeconds.get(month)[0];
+            long secondCutoffSeconds = monthSeconds.get(month)[1];
+
+            double firstGross = computeGrossSalary(firstCutoffSeconds, HR);
+            double secondGross = computeGrossSalary(secondCutoffSeconds, HR);
+            double netSalary = computeNetGrossSalary(secondGross);
+
+            BigDecimal totalMonthSalary = BigDecimal.valueOf(firstGross).add(BigDecimal.valueOf(netSalary));
+
+            System.out.println("=".repeat(40));
+            System.out.println("Month : " + getMonthName(month));
+            System.out.println("-".repeat(40));
+
+            System.out.println("1st Cutoff (Days 1-15)");
+            System.out.println("  Hours : " + secondsToTime(firstCutoffSeconds));
+            System.out.println("  Gross : PHP " + firstGross);
+            System.out.println("  Net   : PHP " + firstGross + " (deductions applied on 2nd cutoff)");
+            System.out.println("-".repeat(40));
+
+            System.out.println("2nd Cutoff (Days 16-End)");
+            System.out.println("  Hours : " + secondsToTime(secondCutoffSeconds));
+            System.out.println("  Gross : PHP " + secondGross);
+            System.out.println("  Net   : PHP " + netSalary);
+            System.out.println("-".repeat(40));
+            System.out.println("Contributions: ");
+            System.out.println("SSS             : " + computeSSS(secondGross));
+            System.out.println("PhilHealth      : " + computePhilHealth(secondGross));
+            System.out.println("Pagibig         : " + computePagibig(secondGross));
+            System.out.println("Withholding Tax : " + computeWithholdingTax(secondGross));
+            System.out.println("-".repeat(40));
+            System.out.println(getMonthName(month) + "'s Total Month Net Salary: PHP " + totalMonthSalary);
+            System.out.println("=".repeat(40));
+            System.out.println();
+        }
+    }
+
+    //------------------------------------------------------------------------------------------------------------------------------
+    //ACCESS METHODS
+    //------------------------------------------------------------------------------------------------------------------------------
+
+    static void payrollStaffAccess(String input, Scanner sc) throws IOException {
+        boolean inDashboard = true;
+        displayLogo();
+        displayIntro(employees);
+        do {
             //Asks for the employee ID
             input = sc.next();
+
+            if (Objects.equals(input, "l")) {
+                inDashboard = false;
+                break;
+            }
 
             //checks if it's not an integer
             if (!isInteger(input)) {
@@ -60,12 +306,6 @@ public class Main {
                 System.out.println("ID not found in employees");
                 continue;
             }
-
-            //Gather data regarding employee attendance
-            Map<String, HashMap<Integer, List<String>>> attendanceData = parseEmployeeAttendance();
-            HashMap<Integer, List<String>> dateMap = attendanceData.get("date");
-            HashMap<Integer, List<String>> inMap = attendanceData.get("in");
-            HashMap<Integer, List<String>> outMap = attendanceData.get("out");
 
             //Convert input to int and store as chosenID
             int chosenID = Integer.parseInt(input);
@@ -84,7 +324,7 @@ public class Main {
             boolean inEmployees = true;
             loop:
             while (inEmployees) {
-                displayOptions();
+                displayPayrollStaffOptions();
                 input = sc.next().toLowerCase();
 
                 //Checking if input is too long
@@ -96,7 +336,7 @@ public class Main {
                 switch (input) {
                     case "g":
                         //Display weekly gross salary
-                        displaySalary(dateList, inList, outList, HR);
+                        displayMonthlySalary(dateList, inList, outList, HR);
                         break;
                     case "a":
                         //Display attendance
@@ -106,113 +346,98 @@ public class Main {
                         //Return to the start of the program
                         displayIntro(employees);
                         break loop;
-                    case "t":
-                        //Terminate the program
-                        System.out.println("Terminating program. Thank you for using the MotorPH payroll display system");
-                        displayLogo();
+                    default:
+                        System.out.println("Please input either \"g\", \"a\" or \"e\".");
+                        continue;
+                }
+            }
+        } while (inDashboard);
+    }
+
+    static void employeeAccess(boolean appRunning, String input, Scanner sc) throws IOException {
+        do {
+            displayLogo();
+
+            //Convert input to int and store as chosenID
+            int chosenID = Integer.parseInt(input);
+
+            //Get time in, out, list of dates and hourly rate of the associated ID
+            List<String> inList = inMap.get(chosenID);
+            List<String> outList = outMap.get(chosenID);
+            List<String> dateList = dateMap.get(chosenID);
+            double HR = Double.parseDouble(employeeHourlyRate.get(chosenID));
+
+            //Displays employee data tied to the ID
+            displayEmployeeData(employeeHourlyRate, employeeName, employeeBirthdays, inMap, outMap, chosenID);
+            displayTotalNetSalary(inList, outList, dateList, HR);
+
+            //Enters a loop asking for further information about an employee
+            boolean inEmployees = true;
+            loop:
+            while (inEmployees) {
+                displayEmployeeOptions();
+                input = sc.next().toLowerCase();
+
+                //Checking if input is too long
+                if (input.length() != 1) {
+                    System.out.println("Input too long.");
+                    continue;
+                }
+                //Allowed inputs are g, a, e and t.
+                switch (input) {
+                    case "g":
+                        //Display weekly gross salary
+                        displayMonthlySalary(dateList, inList, outList, HR);
+                        break;
+                    case "l":
                         appRunning = false;
                         break loop;
                     default:
-                        System.out.println("Please input either \"g\", \"a\", \"e\" or \"t\".");
+                        System.out.println("Please input either \"g\" or \"l\".");
                         continue;
                 }
             }
         } while (appRunning);
     }
 
-    //TODO: Add Login System
-    static void loginMenu(String input, Scanner sc) throws IOException {
-        HashMap<String, Integer> passwords = new HashMap<>();
-        HashMap<String, Integer> usernames = new HashMap<>();
+    //------------------------------------------------------------------------------------------------------------------------------
+    //COMPUTE METHODS
+    //------------------------------------------------------------------------------------------------------------------------------
 
-        String[] payrollStaff = {
-                "Payroll Manager",
-                "Payroll Team Leader",
-                "Payroll Rank and File",
-        };
-
-        for (int employees : employeeName.keySet()) {
-            //Store Passwords
-            passwords.put(employeeName.get(employees).toLowerCase().replace(" ", "") + employees, employees);
-            //Store Usernames
-            usernames.put(employeeName.get(employees).toLowerCase().replace(" ", ""), employees);
-        }
-
-        System.out.println("Enter Username: ");
-        input = sc.next();
-        String inputtedUsername = input;
-
-        System.out.println("Enter Password: ");
-        input = sc.next();
-        String inputtedPassword = input;
-
-        boolean loginConditions = usernames.containsKey(inputtedUsername) && passwords.containsKey(inputtedPassword) && usernames.get(inputtedUsername).equals(passwords.get(inputtedPassword));
-//        boolean payrollStaffLoginConditions =
-//        boolean employeeAccess = true;
-        if (loginConditions) {
-            int employeeId = usernames.get(inputtedUsername);
-            String employeePosition = employeesPosition.get(employeeId);
-
-            boolean adminAccess = Arrays.asList(payrollStaff).contains(employeePosition);
-
-            if (adminAccess) {
-                System.out.println("You have payroll staff Access");
-            } else {
-                System.out.println("You have employee Access");
-            }
-        }
-        else {
-            System.out.println("Either username or password are wrong.");
-        }
-
+    static double computeGrossSalary(long seconds, double gross) {
+        double hour = seconds / 3600.0; //convert seconds to hour
+        return hour * gross;
     }
 
-    //return true if the value can be converted to an int, if not then return false
-    static boolean isInteger(String str) {
-        if (str == null || str.isEmpty()) return false;
-        try {
-            Integer.parseInt(str); //convert string into an int
-            return true;
-        } catch (NumberFormatException e) {
-            return false;
-        }
+    static double computeNetGrossSalary(double monthlyGross) throws IOException {
+
+        double sssTotalContribution = computeSSS(monthlyGross);
+        double philhealthContribution = computePhilHealth(monthlyGross);
+        double pagibigContribution = computePagibig(monthlyGross);
+        double withholdingTax = computeWithholdingTax(monthlyGross);
+
+        double totalContribution = sssTotalContribution + philhealthContribution + pagibigContribution + withholdingTax;
+
+        // DEBUG - remove after fixing
+//        System.out.println("-".repeat(100));
+//        System.out.println("monthlyGross: " + monthlyGross);
+//        System.out.println("sssContribute: " + sssContribution);
+//        System.out.println("philhealth: " + philhealthContribution);
+//        System.out.println("pagibig: " + pagibigContribution);
+//        System.out.println("withholdingTax weekly: " + withholdingTax);
+//        System.out.println("totalContribution: " + totalContribution);
+
+        return monthlyGross - totalContribution;
     }
 
-    //Calculate the hours between log in and log out
-    static long secondsBetweenLog(int inHour, int inMinute, int outHour, int outMinute) {
-        //convert int into time.
-        LocalTime logIn = LocalTime.of(inHour, inMinute);
-        LocalTime logOut = LocalTime.of(outHour, outMinute);
-
-        // only count 8:00 AM to 5:00 PM, 10min Grace period
-        if (logIn.isBefore(LocalTime.of(8, 10))) {
-            logIn = LocalTime.of(8, 0);
+    static double computeTotalNetSalary(HashMap<Integer, long[]> monthSeconds, double HR) throws IOException {
+        double total = 0;
+        for (int month : monthSeconds.keySet()) {
+            double firstGross = computeGrossSalary(monthSeconds.get(month)[0], HR);
+            double secondGross = computeGrossSalary(monthSeconds.get(month)[1], HR);
+            total += firstGross + computeNetGrossSalary(secondGross);
         }
-        if (logOut.isAfter(LocalTime.of(17, 0))) {
-            logOut = LocalTime.of(17, 0);
-        }
-        //If invalid or reversed times
-        if (logOut.isBefore(logIn)) {
-            return 0;
-        }
-
-        //Cap at 8 hours (28800 seconds)
-        long secondsBetween = Math.min(Duration.between(logIn, logOut).getSeconds(), 28800);
-
-        //Deduct 1-hour lunch if worked more than 5 hours
-        if (secondsBetween > 18000) {
-            secondsBetween -= 3600;
-        }
-
-        return secondsBetween;
-    }
-
-    static String secondsToTime(long totalSeconds) {
-        long hours = totalSeconds / 3600; //convert second into hour
-        long remainingSecondsAfterHours = totalSeconds % 3600; //get the remainder after hour
-        long minutes = remainingSecondsAfterHours / 60; //convert the remaining seconds into minutes
-
-        return hours + "h " + minutes + "m ";
+        return total;
     }
 
     static double computeSSS(double monthlyGross) throws IOException {
@@ -296,212 +521,9 @@ public class Main {
         return withholdingTax;
     }
 
-    static double grossSalaryCalculator(long seconds, double gross) {
-        double hour = seconds / 3600.0; //convert seconds to hour
-        return hour * gross;
-    }
-
-    static double netGrossSalaryCalculator(double monthlyGross) throws IOException {
-
-        double sssTotalContribution = computeSSS(monthlyGross);
-        double philhealthContribution = computePhilHealth(monthlyGross);
-        double pagibigContribution = computePagibig(monthlyGross);
-        double withholdingTax = computeWithholdingTax(monthlyGross);
-
-        double totalContribution = sssTotalContribution + philhealthContribution + pagibigContribution + withholdingTax;
-
-        // DEBUG - remove after fixing
-//        System.out.println("-".repeat(100));
-//        System.out.println("monthlyGross: " + monthlyGross);
-//        System.out.println("sssContribute: " + sssContribution);
-//        System.out.println("philhealth: " + philhealthContribution);
-//        System.out.println("pagibig: " + pagibigContribution);
-//        System.out.println("withholdingTax weekly: " + withholdingTax);
-//        System.out.println("totalContribution: " + totalContribution);
-
-        return monthlyGross - totalContribution;
-    }
-
-    static void displayIntro(HashMap<Integer, String> employees) throws IOException {
-        //Clear console and display the logo
-        System.out.flush();
-
-        System.out.println("-".repeat(100));
-        //display header
-        System.out.printf("%-8s %-25s %-25s", "ID", "Name", "Birthday");
-        System.out.println();
-        //display hashmap employees' data
-        for (Map.Entry<Integer, String> entry : employees.entrySet()) {
-            employeeCount++;
-            System.out.printf("%-8d %-20s%n", entry.getKey(), entry.getValue());
-        }
-
-        System.out.println("-".repeat(100));
-        System.out.print("Enter Employee's ID: ");
-    }
-
-    static void displayEmployeeData(HashMap<Integer, String> employeeHourlyRate, HashMap<Integer, String> employeeName, HashMap<Integer, String> employeeBirthdays, HashMap<Integer, List<String>> inMap, HashMap<Integer, List<String>> outMap, int id) throws IOException {
-        List<String> inList = inMap.get(id);
-        List<String> outList = outMap.get(id);
-
-        double HR = Double.parseDouble(employeeHourlyRate.get(id)); //get the hourly rate of the id associated
-        long totalSeconds = 0;
-
-        for (int i = 0; i < inList.size(); i++) {
-            //every iteration a new array is created
-            String[] inParts = inList.get(i).split(":"); //split the list data and store in an array
-            String[] outParts = outList.get(i).split(":");
-
-            int inHour = Integer.parseInt(inParts[0]);
-            int inMinute = Integer.parseInt(inParts[1]);
-            int outHour = Integer.parseInt(outParts[0]);
-            int outMinute = Integer.parseInt(outParts[1]);
-
-            //sum the seconds every loop
-            totalSeconds += secondsBetweenLog(inHour, inMinute, outHour, outMinute);
-        }
-
-        System.out.println("-".repeat(100));
-        System.out.println("ID: " + id);
-        System.out.println("Name: " + employeeName.get(id));
-        System.out.println("Birthday: " + employeeBirthdays.get(id));
-        System.out.println("Total Hours: " + secondsToTime(totalSeconds));
-        System.out.println("Total Gross Salary: " + grossSalaryCalculator(totalSeconds, HR));
-    }
-
-    static void displayOptions() {
-        System.out.println("-".repeat(100));
-        System.out.println("Enter g to display payroll.");
-        System.out.println("Enter a to show attendance.");
-        System.out.println("Enter e to go back.");
-        System.out.println("Enter t to terminate the program.\n");
-    }
-
-    //TODO: Apply deductions only on the second cutoff.
-    static HashMap<Integer, long[]> buildMonthSeconds(List<String> dateList, List<String> inList, List<String> outList) {
-        HashMap<Integer, long[]> monthSeconds = new HashMap<>();
-
-        for (int i = 0; i < inList.size(); i++) {
-            String[] inParts = inList.get(i).split(":");
-            String[] outParts = outList.get(i).split(":");
-            String[] dateParts = dateList.get(i).split("/");
-
-            int month = Integer.parseInt(dateParts[0]);
-            int workDay = Integer.parseInt(dateParts[1]);
-
-            int inHour = Integer.parseInt(inParts[0]);
-            int inMinute = Integer.parseInt(inParts[1]);
-            int outHour = Integer.parseInt(outParts[0]);
-            int outMinute = Integer.parseInt(outParts[1]);
-
-            monthSeconds.putIfAbsent(month, new long[]{0L, 0L});
-
-            long seconds = secondsBetweenLog(inHour, inMinute, outHour, outMinute);
-            if (workDay <= 15) {
-                monthSeconds.get(month)[0] += seconds;
-            } else {
-                monthSeconds.get(month)[1] += seconds;
-            }
-        }
-        return monthSeconds;
-    }
-
-    static double calculateTotalNetSalary(HashMap<Integer, long[]> monthSeconds, double HR) throws IOException {
-        double total = 0;
-        for (int month : monthSeconds.keySet()) {
-            double firstGross = grossSalaryCalculator(monthSeconds.get(month)[0], HR);
-            double secondGross = grossSalaryCalculator(monthSeconds.get(month)[1], HR);
-            total += firstGross + netGrossSalaryCalculator(secondGross);
-        }
-        return total;
-    }
-
-    static void displayTotalNetSalary(List<String> inList, List<String> outList, List<String> dateList, double HR) throws IOException {
-        HashMap<Integer, long[]> monthSeconds = buildMonthSeconds(dateList, inList, outList);
-        System.out.println("Total Net Salary: PHP " + calculateTotalNetSalary(monthSeconds, HR));
-    }
-
-    static void displaySalary(List<String> dateList, List<String> inList, List<String> outList, double HR) throws IOException {
-        HashMap<Integer, long[]> monthSeconds = buildMonthSeconds(dateList, inList, outList);
-
-        for (int month : monthSeconds.keySet()) {
-            long firstCutoffSeconds = monthSeconds.get(month)[0];
-            long secondCutoffSeconds = monthSeconds.get(month)[1];
-
-            double firstGross = grossSalaryCalculator(firstCutoffSeconds, HR);
-            double secondGross = grossSalaryCalculator(secondCutoffSeconds, HR);
-            double netSalary = netGrossSalaryCalculator(secondGross);
-
-            System.out.println("=".repeat(40));
-            System.out.println("Month : " + getMonthName(month));
-            System.out.println("-".repeat(40));
-
-            System.out.println("1st Cutoff (Days 1-15)");
-            System.out.println("  Hours : " + secondsToTime(firstCutoffSeconds));
-            System.out.println("  Gross : PHP " + firstGross);
-            System.out.println("  Net   : " + firstGross + " (deductions applied on 2nd cutoff)");
-            System.out.println("-".repeat(40));
-
-            System.out.println("2nd Cutoff (Days 16-End)");
-            System.out.println("  Hours : " + secondsToTime(secondCutoffSeconds));
-            System.out.println("  Gross : PHP " + secondGross);
-            System.out.println("  Net   : PHP " + netSalary);
-            System.out.println("-".repeat(40));
-            System.out.println("Contributions: ");
-            System.out.println("SSS             : " + computeSSS(secondGross));
-            System.out.println("PhilHealth      : " + computePhilHealth(secondGross));
-            System.out.println("Pagibig         : " + computePagibig(secondGross));
-            System.out.println("Withholding Tax : " + computeWithholdingTax(secondGross));
-            System.out.println("-".repeat(40));
-            System.out.println("Total Monthly Net Salary: PHP " + firstGross + netSalary);
-            System.out.println("=".repeat(40));
-            System.out.println();
-        }
-    }
-
-    // Separate method for resolving month names
-    static String getMonthName(int month) {
-        switch (month) {
-            case 1:
-                return "January";
-            case 2:
-                return "February";
-            case 3:
-                return "March";
-            case 4:
-                return "April";
-            case 5:
-                return "May";
-            case 6:
-                return "June";
-            case 7:
-                return "July";
-            case 8:
-                return "August";
-            case 9:
-                return "September";
-            case 10:
-                return "October";
-            case 11:
-                return "November";
-            default:
-                return "December";
-        }
-    }
-
-    static void displayAttendance(HashMap<Integer, List<String>> dateMap, List<String> inList, List<String> outList, List<String> dateList, int chosenID) throws IOException {
-        if (dateMap.containsKey(chosenID)) {
-            //display header
-            System.out.println("-".repeat(100));
-            System.out.printf("%-14s %-9s %-9s", "Date", "In", "Out");
-            System.out.println();
-            for (int i = 0; i < dateList.toArray().length; i++) {
-                System.out.printf("%-14s %-9s %-9s", dateList.get(i), inList.get(i), outList.get(i));
-                System.out.println();
-            }
-        }
-    }
-
+    //------------------------------------------------------------------------------------------------------------------------------
+    //CSV PARSERS
+    //------------------------------------------------------------------------------------------------------------------------------
 
     static Map<String, HashMap<Integer, String>> parseEmployeeData() throws IOException {
         String infoFile = "src\\data_info.csv";
@@ -628,18 +650,114 @@ public class Main {
         return sss;
     }
 
-    static void displayLogo() {
-        System.out.println("");
-        System.out.println("-".repeat(100));
+    //------------------------------------------------------------------------------------------------------------------------------
+    //HELPER METHODS
+    //------------------------------------------------------------------------------------------------------------------------------
 
-        System.out.println("███╗   " + BLUE + "███╗ ██████╗ ████████╗ ██████╗ ██████╗ ██████╗ ██╗  ██╗" + RESET);
-        System.out.println("████╗ ███" + BLUE + "█║██╔═══██╗╚══██╔══╝██╔═══██╗██╔══██╗██╔══██╗██║  ██║" + RESET);
-        System.out.println("██╔████╔██║█" + BLUE + "█║   ██║   ██║   ██║   ██║██████╔╝██████╔╝███████║" + RESET);
-        System.out.println("██║╚██╔╝██" + RED + "║██║   ██║   ██║   ██║   ██║██╔══██╗██╔═══╝ ██╔══██║" + RESET);
-        System.out.println("██║ ╚═╝ █" + RED + "█║╚██████╔╝   ██║   ╚██████╔╝██║  ██║██║     ██║  ██║" + RESET);
-        System.out.println("╚═╝     " + RED + "╚═╝ ╚═════╝    ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝" + RESET);
-
-        System.out.println("-".repeat(100));
-
+    //return true if the value can be converted to an int, if not then return false
+    static boolean isInteger(String str) {
+        if (str == null || str.isEmpty()) return false;
+        try {
+            Integer.parseInt(str); //convert string into an int
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
+
+    static HashMap<Integer, long[]> buildMonthSeconds(List<String> dateList, List<String> inList, List<String> outList) {
+        HashMap<Integer, long[]> monthSeconds = new HashMap<>();
+
+        for (int i = 0; i < inList.size(); i++) {
+            String[] inParts = inList.get(i).split(":");
+            String[] outParts = outList.get(i).split(":");
+            String[] dateParts = dateList.get(i).split("/");
+
+            int month = Integer.parseInt(dateParts[0]);
+            int workDay = Integer.parseInt(dateParts[1]);
+
+            int inHour = Integer.parseInt(inParts[0]);
+            int inMinute = Integer.parseInt(inParts[1]);
+            int outHour = Integer.parseInt(outParts[0]);
+            int outMinute = Integer.parseInt(outParts[1]);
+
+            monthSeconds.putIfAbsent(month, new long[]{0L, 0L});
+
+            long seconds = secondsBetweenLog(inHour, inMinute, outHour, outMinute);
+            if (workDay <= 15) {
+                monthSeconds.get(month)[0] += seconds;
+            } else {
+                monthSeconds.get(month)[1] += seconds;
+            }
+        }
+        return monthSeconds;
+    }
+
+    //Calculate the hours between log in and log out
+    static long secondsBetweenLog(int inHour, int inMinute, int outHour, int outMinute) {
+        //convert int into time.
+        LocalTime logIn = LocalTime.of(inHour, inMinute);
+        LocalTime logOut = LocalTime.of(outHour, outMinute);
+
+        // only count 8:00 AM to 5:00 PM, 10min Grace period
+        if (logIn.isBefore(LocalTime.of(8, 10))) {
+            logIn = LocalTime.of(8, 0);
+        }
+        if (logOut.isAfter(LocalTime.of(17, 0))) {
+            logOut = LocalTime.of(17, 0);
+        }
+        //If invalid or reversed times
+        if (logOut.isBefore(logIn)) {
+            return 0;
+        }
+
+        //Cap at 8 hours (28800 seconds)
+        long secondsBetween = Math.min(Duration.between(logIn, logOut).getSeconds(), 28800);
+
+        //Deduct 1-hour lunch if worked more than 5 hours
+        if (secondsBetween > 18000) {
+            secondsBetween -= 3600;
+        }
+
+        return secondsBetween;
+    }
+
+    static String secondsToTime(long totalSeconds) {
+        long hours = totalSeconds / 3600; //convert second into hour
+        long remainingSecondsAfterHours = totalSeconds % 3600; //get the remainder after hour
+        long minutes = remainingSecondsAfterHours / 60; //convert the remaining seconds into minutes
+
+        return hours + "h " + minutes + "m ";
+    }
+
+    // Separate method for resolving month names
+    static String getMonthName(int month) {
+        switch (month) {
+            case 1:
+                return "January";
+            case 2:
+                return "February";
+            case 3:
+                return "March";
+            case 4:
+                return "April";
+            case 5:
+                return "May";
+            case 6:
+                return "June";
+            case 7:
+                return "July";
+            case 8:
+                return "August";
+            case 9:
+                return "September";
+            case 10:
+                return "October";
+            case 11:
+                return "November";
+            default:
+                return "December";
+        }
+    }
+
 }
