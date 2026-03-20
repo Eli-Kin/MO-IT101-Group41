@@ -21,21 +21,31 @@ public class Main {
     //\u001B + [xx, where xx is code.
     public static final String TEMPLATE = "\u001B[34m";
 
+    private static Map<String, HashMap<Integer, String>> employeeData;
+    static {
+        try {
+            employeeData = parseEmployeeData();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static HashMap<Integer, String> employees = employeeData.get("employees");
+    private static HashMap<Integer, String> employeeHourlyRate = employeeData.get("hourlyRate");
+    private static HashMap<Integer, String> employeeName = employeeData.get("names");
+    private static HashMap<Integer, String> employeeBirthdays = employeeData.get("birthdays");
+    private static HashMap<Integer, String> employeesPosition = employeeData.get("positions");
 
     public static void main(String[] args) throws IOException {
         Scanner sc = new Scanner(System.in);
-        String input;
-
-        Map<String, HashMap<Integer, String>> employeeData = parseEmployeeData();
-        HashMap<Integer, String> employees = employeeData.get("employees");
-        HashMap<Integer, String> employeeHourlyRate = employeeData.get("hourlyRate");
-        HashMap<Integer, String> employeeName = employeeData.get("names");
-        HashMap<Integer, String> employeeBirthdays = employeeData.get("birthdays");
+        String input = "";
 
         //After data has been stored and organised output logo and all employee data and declare and initialize appRunning as true
         boolean appRunning = true;
-        displayIntro(employees);
         do {
+            displayLogo();
+            loginMenu(input, sc);
+            displayIntro(employees);
             //Asks for the employee ID
             input = sc.next();
 
@@ -108,6 +118,53 @@ public class Main {
                 }
             }
         } while (appRunning);
+    }
+
+    //TODO: Add Login System
+    static void loginMenu(String input, Scanner sc) throws IOException {
+        HashMap<String, Integer> passwords = new HashMap<>();
+        HashMap<String, Integer> usernames = new HashMap<>();
+
+        String[] payrollStaff = {
+                "Payroll Manager",
+                "Payroll Team Leader",
+                "Payroll Rank and File",
+        };
+
+        for (int employees : employeeName.keySet()) {
+            //Store Passwords
+            passwords.put(employeeName.get(employees).toLowerCase().replace(" ", "") + employees, employees);
+            //Store Usernames
+            usernames.put(employeeName.get(employees).toLowerCase().replace(" ", ""), employees);
+        }
+
+        System.out.println("Enter Username: ");
+        input = sc.next();
+        String inputtedUsername = input;
+
+        System.out.println("Enter Password: ");
+        input = sc.next();
+        String inputtedPassword = input;
+
+        boolean loginConditions = usernames.containsKey(inputtedUsername) && passwords.containsKey(inputtedPassword) && usernames.get(inputtedUsername).equals(passwords.get(inputtedPassword));
+//        boolean payrollStaffLoginConditions =
+//        boolean employeeAccess = true;
+        if (loginConditions) {
+            int employeeId = usernames.get(inputtedUsername);
+            String employeePosition = employeesPosition.get(employeeId);
+
+            boolean adminAccess = Arrays.asList(payrollStaff).contains(employeePosition);
+
+            if (adminAccess) {
+                System.out.println("You have payroll staff Access");
+            } else {
+                System.out.println("You have employee Access");
+            }
+        }
+        else {
+            System.out.println("Either username or password are wrong.");
+        }
+
     }
 
     //return true if the value can be converted to an int, if not then return false
@@ -268,7 +325,6 @@ public class Main {
     static void displayIntro(HashMap<Integer, String> employees) throws IOException {
         //Clear console and display the logo
         System.out.flush();
-        displayLogo();
 
         System.out.println("-".repeat(100));
         //display header
@@ -391,15 +447,16 @@ public class Main {
             System.out.println("  Gross : PHP " + secondGross);
             System.out.println("  Net   : PHP " + netSalary);
             System.out.println("-".repeat(40));
-            System.out.println("SSS: " + computeSSS(secondGross));
-            System.out.println("PhilHealth: " + computePhilHealth(secondGross));
-            System.out.println("Pagibig: " + computePagibig(secondGross));
-            System.out.println("Withholding Tax: " + computeWithholdingTax(secondGross));
+            System.out.println("Contributions: ");
+            System.out.println("SSS             : " + computeSSS(secondGross));
+            System.out.println("PhilHealth      : " + computePhilHealth(secondGross));
+            System.out.println("Pagibig         : " + computePagibig(secondGross));
+            System.out.println("Withholding Tax : " + computeWithholdingTax(secondGross));
+            System.out.println("-".repeat(40));
+            System.out.println("Total Monthly Net Salary: PHP " + firstGross + netSalary);
             System.out.println("=".repeat(40));
             System.out.println();
         }
-
-        System.out.println("Total Net Salary: PHP " + calculateTotalNetSalary(monthSeconds, HR));
     }
 
     // Separate method for resolving month names
@@ -456,6 +513,7 @@ public class Main {
         HashMap<Integer, String> employeesHourlyRate = new HashMap<>();
         HashMap<Integer, String> employeesNames = new HashMap<>();
         HashMap<Integer, String> employeeBirthdays = new HashMap<>();
+        HashMap<Integer, String> employeesPosition = new HashMap<>();
 
         String columnRead;
         while ((columnRead = infoReader.readLine()) != null) {
@@ -466,11 +524,13 @@ public class Main {
             String name = infoRow[1] + " " + infoRow[2];
             String birthday = infoRow[3];
             String formatted = String.format("%-25s %-25s", name, birthday);
+            String position = infoRow[11];
 
             employees.put(id, formatted);
             employeesHourlyRate.put(id, infoRow[18]);
             employeesNames.put(id, name);
             employeeBirthdays.put(id, birthday);
+            employeesPosition.put(id, position);
         }
 
         //Store columns required in a Map and store it
@@ -479,6 +539,7 @@ public class Main {
         employeeData.put("hourlyRate", employeesHourlyRate);
         employeeData.put("names", employeesNames);
         employeeData.put("birthdays", employeeBirthdays);
+        employeeData.put("positions", employeesPosition);
 
         return employeeData;
     }
