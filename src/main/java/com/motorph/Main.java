@@ -32,7 +32,7 @@
  *   - data_attendance.csv : Daily time-in and time-out logs per employee
  *   - sss_contribution.csv: SSS contribution bracket table
  *
- * Authors  : MotorPH Development Team (Group 41)
+ * Authors  : MotorPH Development Team
  * Language : Java
  */
 
