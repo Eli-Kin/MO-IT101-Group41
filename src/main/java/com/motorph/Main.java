@@ -1,3 +1,41 @@
+/**
+ * MotorPH Payroll Display System — Main Entry Point
+ *
+ * This program is a console-based payroll management system for MotorPH employees.
+ * It authenticates users via a username/password login, then grants access based on
+ * their role within the company.
+ *
+ * Two access levels are supported:
+ *   1. Payroll Staff (Payroll Manager, Team Leader, Rank and File):
+ *      - Can browse all employees by ID
+ *      - Can view any employee's attendance records and monthly payroll breakdown
+ *
+ *   2. Regular Employees:
+ *      - Can only view their own payroll summary and monthly salary breakdown
+ *
+ * Payroll computation follows Philippine government contribution rules:
+ *   - SSS: Looked up from a contribution table in sss_contribution.csv
+ *   - PhilHealth: 3% of monthly gross, capped at PHP 1,800 (employee share = 50%)
+ *   - Pag-IBIG: 3–4% of monthly gross, capped at PHP 100
+ *   - Withholding Tax: Tiered tax brackets applied to the second-cutoff gross salary
+ *
+ * Salary is split into two cutoff periods per month:
+ *   - 1st Cutoff: Days 1–15 (gross pay only, no deductions)
+ *   - 2nd Cutoff: Days 16–End (gross pay minus all government deductions)
+ *
+ * Work hours are capped at 8 hours per day (8:00 AM–5:00 PM).
+ * A 10-minute grace period is applied for late logins.
+ * A 1-hour unpaid lunch break is deducted if the employee worked more than 5 hours.
+ *
+ * Data Sources (CSV files under src/):
+ *   - data_info.csv       : Employee personal details, positions, and hourly rates
+ *   - data_attendance.csv : Daily time-in and time-out logs per employee
+ *   - sss_contribution.csv: SSS contribution bracket table
+ *
+ * Authors  : MotorPH Development Team (Group 41)
+ * Language : Java
+ */
+
 package com.motorph;
 
 import java.io.*;
