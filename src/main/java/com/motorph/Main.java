@@ -48,6 +48,8 @@ public class Main {
 
     //------------------------------------------------------------------------------------------------------------------------------
     //VARIABLES
+    // These lists hold SSS bracket data loaded from the CSV, declared at class level so they are
+    // accessible across multiple computation calls without re-reading the file every time.
     //------------------------------------------------------------------------------------------------------------------------------
 
     private static List<String> sssCMinRange = new ArrayList<>();
@@ -64,7 +66,12 @@ public class Main {
     //\u001B + [xx, where xx is code.
     public static final String TEMPLATE = "\u001B[34m";
 
-    //Gather employee data
+    //------------------------------------------------------------------------------------------------------------------------------
+    // EMPLOYEE DATA — loaded once at class initialization from data_info.csv
+    // Storing this in static HashMaps avoids re-reading the file on every user interaction,
+    // improving responsiveness for a console application that serves multiple sessions.
+    ////Gather employee data--------------------------------------------------------------------------------------------------------
+    
     private static Map<String, HashMap<Integer, String>> employeeData;
 
     static {
@@ -74,14 +81,19 @@ public class Main {
             throw new RuntimeException(e);
         }
     }
-
+    // Each map is keyed by employee ID (Integer) for O(1) lookups when an ID is entered.
     private static HashMap<Integer, String> employees = employeeData.get("employees");
     private static HashMap<Integer, String> employeeHourlyRate = employeeData.get("hourlyRate");
     private static HashMap<Integer, String> employeeName = employeeData.get("names");
     private static HashMap<Integer, String> employeeBirthdays = employeeData.get("birthdays");
     private static HashMap<Integer, String> employeesPosition = employeeData.get("positions");
 
-    //Gather data regarding employee attendance
+    //------------------------------------------------------------------------------------------------------------------------------
+    // ATTENDANCE DATA — loaded once at class initialization from data_attendance.csv
+    // Split into three parallel maps (date, in, out) so that index i in each list
+    // corresponds to the same attendance record for a given employee ID.
+    // Gather data regarding employee attendance-------------------------------------------------------------------------------------
+    
     private static Map<String, HashMap<Integer, List<String>>> attendanceData;
 
     static {
@@ -111,12 +123,18 @@ public class Main {
 
     //------------------------------------------------------------------------------------------------------------------------------
     //LOGIN MENU
+    // Builds credential maps from employee data so that no hardcoded passwords exist —
+    // each employee's username is their full name (lowercase, no spaces) and their
+    // password is that same string with their numeric ID appended.
     //------------------------------------------------------------------------------------------------------------------------------
 
     static void loginMenu(boolean appRunning, String input, Scanner sc) throws IOException {
         HashMap<String, Integer> passwords = new HashMap<>();
         HashMap<String, Integer> usernames = new HashMap<>();
 
+  
+        // These are the three position titles that grant payroll staff (admin) access.
+        // Any employee whose position does not match one of these is treated as a regular employee.      
         String[] payrollStaff = {
                 "Payroll Manager",
                 "Payroll Team Leader",
@@ -159,12 +177,16 @@ public class Main {
             } else {
                 inputtedPassword = input;
             }
-
+            
+            // Authentication check: both the username AND password must exist and resolve
+            // to the same employee ID. This prevents one employee from using another's ID.
             boolean loginConditions = usernames.containsKey(inputtedUsername) && passwords.containsKey(inputtedPassword) && usernames.get(inputtedUsername).equals(passwords.get(inputtedPassword));
             if (loginConditions) {
                 int employeeId = usernames.get(inputtedUsername);
                 String employeePosition = employeesPosition.get(employeeId);
 
+                // Grant elevated access if the employee holds a payroll staff position;
+                // otherwise restrict them to their own records only.
                 boolean adminAccess = Arrays.asList(payrollStaff).contains(employeePosition);
 
                 if (adminAccess) {
@@ -181,12 +203,15 @@ public class Main {
 
     //------------------------------------------------------------------------------------------------------------------------------
     //DISPLAY METHODS
+    // These methods handle all console output. Separating display logic from computation
+    // logic makes it easier to update the UI without touching payroll calculations.
     //------------------------------------------------------------------------------------------------------------------------------
 
     static void displayLogo() {
         System.out.println("");
         System.out.println("-".repeat(100));
-
+        
+// ASCII art logo with alternating BLUE/RED segments to match MotorPH branding color
         System.out.println("███╗   " + BLUE + "███╗ ██████╗ ████████╗ ██████╗ ██████╗ ██████╗ ██╗  ██╗" + RESET);
         System.out.println("████╗ ███" + BLUE + "█║██╔═══██╗╚══██╔══╝██╔═══██╗██╔══██╗██╔══██╗██║  ██║" + RESET);
         System.out.println("██╔████╔██║█" + BLUE + "█║   ██║   ██║   ██║   ██║██████╔╝██████╔╝███████║" + RESET);
@@ -203,10 +228,10 @@ public class Main {
         System.out.flush();
 
         System.out.println("-".repeat(100));
-        //display header
+        //display header - Table header for the employee roster shown to payroll staff.
         System.out.printf("%-8s %-25s %-25s", "ID", "Name", "Birthday");
         System.out.println();
-        //display hashmap employees' data
+        //display hashmap employees' data - Iterate through all loaded employees and print each row.
         for (Map.Entry<Integer, String> entry : employees.entrySet()) {
             employeeCount++;
             System.out.printf("%-8d %-20s%n", entry.getKey(), entry.getValue());
@@ -236,7 +261,7 @@ public class Main {
             //sum the seconds every loop
             totalSeconds += secondsBetweenLog(inHour, inMinute, outHour, outMinute);
         }
-
+     // Display the summary card for this employee before offering further menu options.
         System.out.println("-".repeat(100));
         System.out.println("ID: " + id);
         System.out.println("Name: " + employeeName.get(id));
@@ -247,10 +272,11 @@ public class Main {
 
     static void displayAttendance(HashMap<Integer, List<String>> dateMap, List<String> inList, List<String> outList, List<String> dateList, int chosenID) throws IOException {
         if (dateMap.containsKey(chosenID)) {
-            //display header
+            //display header - Only display the attendance table if the employee has records on file.
             System.out.println("-".repeat(100));
             System.out.printf("%-14s %-9s %-9s", "Date", "In", "Out");
             System.out.println();
+            // Print each attendance record row using parallel list indices.
             for (int i = 0; i < dateList.toArray().length; i++) {
                 System.out.printf("%-14s %-9s %-9s", dateList.get(i), inList.get(i), outList.get(i));
                 System.out.println();
@@ -259,6 +285,8 @@ public class Main {
     }
 
     static void displayPayrollStaffOptions() {
+        // Menu shown inside the per-employee view for payroll staff, offering
+        // payroll breakdown, attendance log, or a return to the employee list.
         System.out.println("-".repeat(100));
         System.out.println("Enter g to display payroll.");
         System.out.println("Enter a to show attendance.");
@@ -266,17 +294,23 @@ public class Main {
     }
 
     static void displayEmployeeOptions() {
+        // Simplified menu for regular employees — they cannot view other employees
+        // or attendance logs, so only payroll and logout are offered.
         System.out.println("-".repeat(100));
         System.out.println("Enter g to display payroll.");
         System.out.println("Enter l to logout.\n");
     }
 
     static void displayTotalNetSalary(List<String> inList, List<String> outList, List<String> dateList, double HR) throws IOException {
+        // Build the month-by-cutoff seconds map first so we can pass it into
+        // the net salary computation without re-iterating the attendance lists.
         HashMap<Integer, long[]> monthSeconds = buildMonthSeconds(dateList, inList, outList);
         System.out.println("Total Net Salary: PHP " + computeTotalNetSalary(monthSeconds, HR));
     }
 
     static void displayMonthlySalary(List<String> dateList, List<String> inList, List<String> outList, double HR) throws IOException {
+        // Group all attendance records into first and second cutoff seconds per month
+        // so we can display a clean per-month, per-cutoff salary breakdown.
         HashMap<Integer, long[]> monthSeconds = buildMonthSeconds(dateList, inList, outList);
 
         for (int month : monthSeconds.keySet()) {
@@ -285,8 +319,11 @@ public class Main {
 
             double firstGross = computeGrossSalary(firstCutoffSeconds, HR);
             double secondGross = computeGrossSalary(secondCutoffSeconds, HR);
+            // Government deductions (SSS, PhilHealth, Pag-IBIG, Withholding Tax) are applied
+            // only on the second cutoff, matching standard Philippine payroll practice.
             double netSalary = computeNetGrossSalary(secondGross);
 
+            // Total month take-home = full 1st cutoff gross + deduction-reduced 2nd cutoff net.
             BigDecimal totalMonthSalary = BigDecimal.valueOf(firstGross).add(BigDecimal.valueOf(netSalary));
 
             System.out.println("=".repeat(40));
@@ -318,6 +355,9 @@ public class Main {
 
     //------------------------------------------------------------------------------------------------------------------------------
     //ACCESS METHODS
+    // These methods control what each user type can see and do after login.
+    // Keeping staff and employee flows in separate methods prevents role-based
+    // logic from becoming tangled in a single large loop.
     //------------------------------------------------------------------------------------------------------------------------------
 
     static void payrollStaffAccess(String input, Scanner sc) throws IOException {
@@ -325,7 +365,7 @@ public class Main {
         displayLogo();
         displayIntro(employees);
         do {
-            //Asks for the employee ID
+            //Asks for the employee ID - Read the employee ID the payroll staff wants to inspect.
             input = sc.next();
 
             if (Objects.equals(input, "l")) {
@@ -359,6 +399,8 @@ public class Main {
             displayTotalNetSalary(inList, outList, dateList, HR);
 
             //Enters a loop asking for further information about an employee
+            // Inner loop keeps staff inside a single employee's record until they choose to go back,
+            // avoiding a return to the ID-entry prompt after every single action.
             boolean inEmployees = true;
             loop:
             while (inEmployees) {
@@ -440,15 +482,17 @@ public class Main {
 
     //------------------------------------------------------------------------------------------------------------------------------
     //COMPUTE METHODS
+    // All monetary calculations are isolated here so that changes to government
+    // contribution rules only require edits in one place.
     //------------------------------------------------------------------------------------------------------------------------------
 
     static double computeGrossSalary(long seconds, double gross) {
-        double hour = seconds / 3600.0; //convert seconds to hour
+        double hour = seconds / 3600.0; //convert seconds to hour - Convert total worked seconds to fractional hours, then multiply by the hourly rate.
         return hour * gross;
     }
 
     static double computeNetGrossSalary(double monthlyGross) throws IOException {
-
+    // Sum all mandatory Philippine government deductions applied to the second-cutoff gross.
         double sssTotalContribution = computeSSS(monthlyGross);
         double philhealthContribution = computePhilHealth(monthlyGross);
         double pagibigContribution = computePagibig(monthlyGross);
@@ -469,6 +513,8 @@ public class Main {
     }
 
     static double computeTotalNetSalary(HashMap<Integer, long[]> monthSeconds, double HR) throws IOException {
+        // Iterate over every month's two cutoff periods, compute gross for each,
+        // apply deductions only to the second cutoff, then accumulate the running total.
         double total = 0;
         for (int month : monthSeconds.keySet()) {
             double firstGross = computeGrossSalary(monthSeconds.get(month)[0], HR);
@@ -479,12 +525,16 @@ public class Main {
     }
 
     static double computeSSS(double monthlyGross) throws IOException {
+        // Read the SSS bracket table from CSV each time this is called so that
+        // the contribution schedule can be updated without recompiling the program.
         Map<String, List<String>> sssCData = parseSSS();
         sssCMinRange = sssCData.get("minRange");
         sssCMaxRange = sssCData.get("maxRange");
         sssContribution = sssCData.get("contribution");
 
         // SSS Contribution
+        // Walk the bracket table to find the row whose min–max range contains the monthly gross.
+        // "Over" in the max column means no upper bound, so it maps to Double.MAX_VALUE.
         double sssTotalContribution = 0;
         for (int i = 0; i < sssCMinRange.size(); i++) {
             double min = Double.parseDouble(sssCMinRange.get(i));
@@ -499,6 +549,7 @@ public class Main {
             if (monthlyGross >= min && monthlyGross <= max) {
                 sssTotalContribution = con;
             } else if (monthlyGross < 3250) {
+            // Floor case: salaries below the lowest bracket use the minimum contribution of PHP 135.
                 sssTotalContribution = 135.0;
             }
         }
@@ -507,6 +558,8 @@ public class Main {
     }
 
     static double computePhilHealth(double monthlyGross) {
+         // PhilHealth premium = 3% of monthly gross, capped at PHP 1,800 total.
+        // The employee pays half (50%) of the total premium.
         double premiumMonthly = Math.min(monthlyGross * 0.03, 1800); //maximum contribution is 1800
         double philhealthContribution = (premiumMonthly * 0.5);
 
@@ -514,6 +567,10 @@ public class Main {
     }
 
     static double computePagibig(double monthlyGross) {
+        // Pag-IBIG contribution rate scales with salary:
+        //   PHP 1,000–1,499 → 3%
+        //   PHP 1,500 and above → 4%
+        // The total contribution is capped at PHP 100 regardless of rate.
         double pagibigTotalRate = 0;
         if (monthlyGross >= 1000 && monthlyGross < 1500) {
             pagibigTotalRate = 0.03;
@@ -526,6 +583,9 @@ public class Main {
     }
 
     static double computeWithholdingTax(double monthlyGross) {
+        // Tiered withholding tax based on BIR's monthly income tax table.
+        // Each bracket applies a percentage only to the amount exceeding the bracket floor,
+        // then adds the fixed tax due for that bracket (the "plus" amount).
         double taxRate = 0;
         double excess = 0;
         double plus = 0;
@@ -561,9 +621,13 @@ public class Main {
 
     //------------------------------------------------------------------------------------------------------------------------------
     //CSV PARSERS
+    // Each parser reads a single CSV file and returns a structured Map so that
+    // the rest of the program never has to deal with raw file I/O or string splitting.
     //------------------------------------------------------------------------------------------------------------------------------
 
     static Map<String, HashMap<Integer, String>> parseEmployeeData() throws IOException {
+        // Read employee personal and salary data from the info CSV.
+        // The regex split pattern handles quoted commas inside fields (e.g., "Last, First" style names).
         String infoFile = "src\\data_info.csv";
         BufferedReader infoReader = new BufferedReader(new FileReader(infoFile));
         infoReader.readLine(); //skip header
@@ -577,23 +641,26 @@ public class Main {
 
         String columnRead;
         while ((columnRead = infoReader.readLine()) != null) {
+             // Regex splits on commas that are NOT inside double quotes,
+            // which is necessary because some fields (e.g., addresses) contain commas.
             String[] infoRow = columnRead.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
 
             int id = Integer.parseInt(infoRow[0]);
 
+           // Combine first (index 2) and last (index 1) name into a single display string.
             String name = infoRow[1] + " " + infoRow[2];
             String birthday = infoRow[3];
             String formatted = String.format("%-25s %-25s", name, birthday);
-            String position = infoRow[11];
+            String position = infoRow[11];  // Column 11 holds the employee's job position title.
 
             employees.put(id, formatted);
-            employeesHourlyRate.put(id, infoRow[18]);
+            employeesHourlyRate.put(id, infoRow[18]); // Column 18 holds the hourly rate.
             employeesNames.put(id, name);
             employeeBirthdays.put(id, birthday);
             employeesPosition.put(id, position);
         }
 
-        //Store columns required in a Map and store it
+        //Store columns required in a Map and store it - Bundle all maps under a single return value to keep the method signature clean.
         Map<String, HashMap<Integer, String>> employeeData = new HashMap<>();
         employeeData.put("employees", employees);
         employeeData.put("hourlyRate", employeesHourlyRate);
@@ -605,7 +672,7 @@ public class Main {
     }
 
     static Map<String, HashMap<Integer, List<String>>> parseEmployeeAttendance() throws FileNotFoundException, IOException {
-        //Provide directory for path and set up BufferedReader
+        //Provide directory for path and set up BufferedReader - Read daily attendance logs. Each row represents one day's clock-in/out for one employee.
         String attendanceFile = "src\\data_attendance.csv";
         BufferedReader attendanceReader = new BufferedReader(new FileReader(attendanceFile));
 
@@ -650,6 +717,8 @@ public class Main {
 
     static Map<String, List<String>> parseSSS() throws IOException {
         //Provide directory for path and set up BufferedReader
+        // Read the SSS contribution bracket table.
+        // Two header rows are skipped because the CSV uses a title row followed by a column-label row.
         String sssFile = "src\\sss_contribution.csv";
         BufferedReader sssReader = new BufferedReader(new FileReader(sssFile));
 
@@ -667,13 +736,15 @@ public class Main {
             String[] sssRow = columnRead.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
 
             // Clean quotes and commas from all columns
+            // Strip quotes and embedded commas from numeric fields before parsing,
+            // because currency values in the CSV are formatted as e.g. "1,250.00".
             for (int i = 0; i < sssRow.length; i++) {
                 sssRow[i] = sssRow[i].replace("\"", "").replace(",", "");
             }
             //Add data to lists
             minRange.add(sssRow[0]);
-            maxRange.add(sssRow[2]);
-            contribution.add(sssRow[3]);
+            maxRange.add(sssRow[2]); // Column 2 is the upper bound of the bracket.
+            contribution.add(sssRow[3]); // Column 3 is the fixed employee contribution for that bracket.
         }
 
         //Close the reader
@@ -690,6 +761,7 @@ public class Main {
 
     //------------------------------------------------------------------------------------------------------------------------------
     //HELPER METHODS
+    // Small, reusable utilities that support both display and computation logic.
     //------------------------------------------------------------------------------------------------------------------------------
 
     //return true if the value can be converted to an int, if not then return false
@@ -704,6 +776,9 @@ public class Main {
     }
 
     static HashMap<Integer, long[]> buildMonthSeconds(List<String> dateList, List<String> inList, List<String> outList) {
+        // Group worked seconds by month and by cutoff period (1–15 vs 16–end).
+        // Each map entry is a two-element array: [firstCutoffSeconds, secondCutoffSeconds].
+        // This structure lets callers compute gross pay for each half independently.
         HashMap<Integer, long[]> monthSeconds = new HashMap<>();
 
         for (int i = 0; i < inList.size(); i++) {
@@ -722,6 +797,7 @@ public class Main {
             monthSeconds.putIfAbsent(month, new long[]{0L, 0L});
 
             long seconds = secondsBetweenLog(inHour, inMinute, outHour, outMinute);
+            // Assign seconds to the correct cutoff bin based on the calendar day of the month.
             if (workDay <= 15) {
                 monthSeconds.get(month)[0] += seconds;
             } else {
@@ -737,6 +813,9 @@ public class Main {
         LocalTime logIn = LocalTime.of(inHour, inMinute);
         LocalTime logOut = LocalTime.of(outHour, outMinute);
 
+        // Enforce an official shift window of 8:00 AM–5:00 PM.
+        // A 10-minute grace period means logins before 8:10 AM are treated as exactly 8:00 AM,
+        // ensuring employees are not penalized for minor tardiness while also not rewarding early arrivals.
         // only count 8:00 AM to 5:00 PM, 10min Grace period
         if (logIn.isBefore(LocalTime.of(8, 10))) {
             logIn = LocalTime.of(8, 0);
@@ -744,15 +823,15 @@ public class Main {
         if (logOut.isAfter(LocalTime.of(17, 0))) {
             logOut = LocalTime.of(17, 0);
         }
-        //If invalid or reversed times
+        //If invalid or reversed times - Guard against data-entry errors where logout appears before login.
         if (logOut.isBefore(logIn)) {
             return 0;
         }
 
-        //Cap at 8 hours (28800 seconds)
+        //Cap at 8 hours (28800 seconds) - to prevent overtime from inflating computed pay.
         long secondsBetween = Math.min(Duration.between(logIn, logOut).getSeconds(), 28800);
 
-        //Deduct 1-hour lunch if worked more than 5 hours
+        //Deduct 1-hour lunch if worked more than 5 hours.
         if (secondsBetween > 18000) {
             secondsBetween -= 3600;
         }
@@ -768,6 +847,7 @@ public class Main {
         return hours + "h " + minutes + "m ";
     }
 
+    // Maps a numeric month (1–12) to its full English name for use in payroll display headers.
     // Separate method for resolving month names
     static String getMonthName(int month) {
         switch (month) {
