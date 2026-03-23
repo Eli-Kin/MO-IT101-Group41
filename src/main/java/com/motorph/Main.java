@@ -5,6 +5,26 @@
  * It authenticates users via a username/password login, then grants access based on
  * their role within the company.
  *
+ * Program Flow:
+ *   Step 1 — Login:
+ *     The program prompts for a username and password.
+ *     Valid usernames are "employee" or "payroll_staff", password is 12345.
+ *     If credentials are incorrect, an error is displayed and the program terminates.
+ *     If credentials are correct, the user is routed based on their username.
+ *
+ *   Step 2A — Employee Access (username: employee):
+ *     The employee can enter their employee number to view their own details
+ *     (Employee Number, Name, Birthday) or exit the program.
+ *     If the employee number does not exist, an error message is displayed.
+ *
+ *   Step 2B — Payroll Staff Access (username: payroll_staff):
+ *     Payroll staff can process payroll for one employee or all employees,
+ *     or exit the program. Payroll records cover June to December and are
+ *     displayed per cutoff period:
+ *       - 1st Cutoff (Days 1–15): Hours worked, Gross Salary, Net Salary
+ *       - 2nd Cutoff (Days 16–End): Hours worked, Gross Salary, each deduction
+ *         itemized (SSS, PhilHealth, Pag-IBIG, Tax), Total Deductions, Net Salary
+ *
  * Two access levels are supported:
  *   1. Payroll Staff (Payroll Manager, Team Leader, Rank and File):
  *      - Can browse all employees by ID
