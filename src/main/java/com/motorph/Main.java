@@ -76,15 +76,10 @@ public class Main {
     private static List<String> sssCMaxRange = new ArrayList<>();
     private static List<String> sssContribution = new ArrayList<>();
 
-    private static int employeeCount;
     //ANSI escape codes for colors
     public static final String RESET = "\u001B[0m";
     public static final String RED = "\u001B[31m";
     public static final String BLUE = "\u001B[34m";
-
-    //template for more colours
-    //\u001B + [xx, where xx is code.
-    public static final String TEMPLATE = "\u001B[34m";
 
     //------------------------------------------------------------------------------------------------------------------------------
     // EMPLOYEE DATA — loaded once at class initialization from data_info.csv
@@ -425,7 +420,6 @@ public class Main {
         System.out.println();
         //display hashmap employees' data
         for (Map.Entry<Integer, String> entry : employees.entrySet()) {
-            employeeCount++;
             System.out.printf("%-8d %-20s%n", entry.getKey(), entry.getValue());
         }
         System.out.println("-".repeat(100));
@@ -573,15 +567,6 @@ public class Main {
         double withholdingTax = computeWithholdingTax(monthlyGross);
  
         double totalContribution = sssTotalContribution + philhealthContribution + pagibigContribution + withholdingTax;
- 
-        // DEBUG - remove after fixing
-//        System.out.println("-".repeat(100));
-//        System.out.println("monthlyGross: " + monthlyGross);
-//        System.out.println("sssContribute: " + sssContribution);
-//        System.out.println("philhealth: " + philhealthContribution);
-//        System.out.println("pagibig: " + pagibigContribution);
-//        System.out.println("withholdingTax weekly: " + withholdingTax);
-//        System.out.println("totalContribution: " + totalContribution);
  
         return monthlyGross - totalContribution;
     }
