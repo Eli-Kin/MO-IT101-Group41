@@ -70,7 +70,7 @@ public class Main {
     // EMPLOYEE DATA — loaded once at class initialization from data_info.csv
     // Storing this in static HashMaps avoids re-reading the file on every user interaction,
     // improving responsiveness for a console application that serves multiple sessions.
-    ///-----------------------------------------------------------------------------------------------------------------------------
+    // Gather employee data---------------------------------------------------------------------------------------------------------
     
     private static Map<String, HashMap<Integer, String>> employeeData;
 
